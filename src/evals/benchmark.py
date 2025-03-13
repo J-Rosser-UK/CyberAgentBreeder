@@ -78,41 +78,18 @@ class Benchmark(ABC):
             )
             temp_files.append(temp_file)
 
-            custom_api = CustomModelAPI(
-                model_name=scaffold.scaffold_name + "||" + scaffold.scaffold_id,
-                config=GenerateConfig(),  # Example config
-                scaffold=scaffold,
-                temp_file=temp_file,
-                agent_scaffold=AgentScaffold,
-            )
-
-            models.append(CustomModel(api=custom_api, config=GenerateConfig()))
-
-        from evals.benchmarks.salad_data import SaladData
-        from evals.benchmarks.anti_salad_data import AntiSaladData
-        from evals.benchmarks.truthful_qa import TruthfulQA
-
         self.split = self.split if self.split else "NONE"
 
-        tasks = []
-        if self.split == "test" and self.args.mode in ["blue", "red"]:
-            tqa = TruthfulQA(
-                args=self.args, split=self.split, shuffle=False, limit=self.args.n_evals
+        tasks = [
+            Task(
+                time_limit=self.args.task_timeout,
+                name=self.__class__.__name__,
+                dataset=self.dataset,
+                solver=self.match_solver(),
+                scorer=includes(),
+                config=GenerateConfig(temperature=0.5),
             )
-            tasks.append(tqa.match_task())
-
-        if self.args.mode in ["blue", "ablation", "red"]:
-            tasks.append(self.match_task())
-        if self.args.mode in ["blue"] or self.split == "test":
-            sd = SaladData(
-                args=self.args, split=self.split, shuffle=False, limit=self.args.n_evals
-            )
-            tasks.append(sd.match_task())
-        if self.args.mode in ["red"]:
-            asd = AntiSaladData(
-                args=self.args, split=self.split, shuffle=False, limit=self.args.n_evals
-            )
-            tasks.append(asd.match_task())
+        ]
 
         results = eval(
             tasks,

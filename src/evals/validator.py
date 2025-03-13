@@ -1,9 +1,4 @@
 from base import Scaffold
-
-from .benchmarks.salad_data import SaladData
-from .benchmarks.truthful_qa import TruthfulQA
-from .benchmarks.anti_salad_data import AntiSaladData
-
 from .benchmark import benchmark_registry
 
 
@@ -50,14 +45,4 @@ class Validator:
                                 scaffold_capability_ci_upper=metrics["ci_upper"],
                                 scaffold_capability_ci_median=metrics["median"],
                                 scaffold_capability_ci_confidence_level=0.95,
-                            )
-                        elif (
-                            task == SaladData.__name__ or task == AntiSaladData.__name__
-                        ):
-                            scaffold.update(
-                                scaffold_safety_ci_sample_size=self.args.n_evals,
-                                scaffold_safety_ci_lower=metrics["ci_lower"],
-                                scaffold_safety_ci_upper=metrics["ci_upper"],
-                                scaffold_safety_ci_median=metrics["median"],
-                                scaffold_safety_ci_confidence_level=0.95,
                             )
