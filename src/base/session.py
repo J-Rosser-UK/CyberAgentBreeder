@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
-from .base import Base, Wrapper  # noqa
+from .base import Base  # noqa
 
 from .tables import (
     Chat,

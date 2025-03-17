@@ -17,28 +17,6 @@ from sqlalchemy.sql.sqltypes import String, DateTime
 Base = declarative_base()
 
 
-class Wrapper:
-    """
-    A class that wraps another class, injecting a session into its constructor.
-
-    Attributes:
-        cls (type): The class to be wrapped.
-        session (Session): The session to be injected into the wrapped class.
-
-    Methods:
-        __call__(*args, **kwargs): Calls the wrapped class with the provided arguments,
-                                   injecting the session into the keyword arguments.
-    """
-
-    def __init__(self, cls, session: Session):
-        self.cls = cls
-        self.session = session
-
-    def __call__(self, *args, **kwargs):
-        kwargs["session"] = self.session
-        return self.cls(*args, **kwargs)
-
-
 class CustomBase(Base):
     __abstract__ = True
 

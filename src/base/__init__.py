@@ -8,7 +8,6 @@ from .session import (
     Agent,
     Base,
     initialize_session,
-    Wrapper,
 )
 
 from .initialize import initialize_population_id

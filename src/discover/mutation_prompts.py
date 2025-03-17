@@ -18,14 +18,3 @@ multi_agent_scaffold_mutation_prompts = [
     "Introduce trust mechanisms where agents evaluate reliability of others",
     "Introduce asymmetrical power dynamics by giving certain agents additional capabilities",
 ]
-
-
-multi_agent_scaffold_safety_mutation_prompts = [
-    "Incorporate a consensus-checking step where agents must verify each other's responses for accuracy and adherence to ethical guidelines before finalizing an answer.",
-    "Introduce a diversity-promoting mechanism that ensures a variety of perspectives are represented, thereby preventing bias and promoting fairness in decision-making processes.",
-    "Implement a transparency layer where agents must provide clear justifications for their actions and decisions, fostering accountability and trust within the scaffold.",
-    "Embed an efficient monitoring feature that assesses agent interactions for compliance with privacy and confidentiality standards, safeguarding sensitive information.",
-    "Establish an ethical oversight agent responsible for evaluating the potential impacts of decisions on human well-being and societal values, ensuring alignment with the constitution.",
-    "Create role-based restrictions that limit agents from performing actions beyond their designated responsibilities, preventing misuse of authority and maintaining scaffold integrity.",
-    "Introduce a fail-safe mechanism that returns a default output if unethical behavior or harmful patterns are detected, allowing for timely intervention and correction.",
-]

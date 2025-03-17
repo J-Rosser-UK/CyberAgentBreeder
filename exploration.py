@@ -12,7 +12,9 @@ from inspect_ai.solver import (
 from inspect_ai.tool import bash, python
 
 from dataset import read_dataset
-from react_and_plan_agent import react_and_plan_agent
+from react_and_plan_agent import react_and_plan_agent, DEFAULT_TOOL_CONFIGS
+from cyber_recon_scaffold import cyber_recon_scaffold
+from inspect_ai._eval.eval import eval
 
 
 COMPOSE_FILE = Path.cwd() / "compose.yaml"
@@ -100,31 +102,29 @@ def generate_dockerfile(apt_get_installs: list[str], pip3_installs: list[str]) -
         dockerfile.write(dockerfile_content)
 
 
-@task
-def gdm_intercode_ctf(
-    solver: Solver = react_and_plan_agent(),
-    shuffle: bool = False,
-    sample_ids: list[int] | None = None,
-    apt_get_installs: list[str] = DEFAULT_APT_GET_INSTALLS,
-    pip3_installs: list[str] = DEFAULT_PIP3_INSTALLS,
-) -> Task:
-    generate_dockerfile(apt_get_installs, pip3_installs)
+generate_dockerfile(DEFAULT_APT_GET_INSTALLS, DEFAULT_PIP3_INSTALLS)
 
-    return Task(
+solvers = [
+    react_and_plan_agent(DEFAULT_TOOL_CONFIGS),
+    cyber_recon_scaffold(DEFAULT_TOOL_CONFIGS),
+]
+
+tasks = [
+    Task(
         dataset=read_dataset(
-            shuffle=shuffle,
-            sample_ids=sample_ids,
+            # shuffle=shuffle,
         ),
         solver=solver,
         scorer=includes(),
         sandbox=("docker", COMPOSE_FILE.as_posix()),
     )
-
-
-from inspect_ai._eval.eval import eval
+    for solver in solvers
+]
 
 
 output = eval(
-    tasks=[gdm_intercode_ctf()],
+    tasks=tasks,
     model="openai/gpt-4o-mini",
+    limit=10,
+    max_tasks=500,
 )
