@@ -18,8 +18,8 @@ from .solvers import CTFSolver, DEFAULT_TOOL_CONFIGS
 COMPOSE_FILE = Path.cwd() / "compose.yaml"
 
 
-@register_benchmark("ctf")
-class CTFBenchmark(Benchmark):
+@register_benchmark("intercode_ctf")
+class IntercodeCTFBenchmark(Benchmark):
     """CTF benchmark implementation."""
 
     def __init__(

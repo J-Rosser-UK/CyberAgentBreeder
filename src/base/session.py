@@ -5,15 +5,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
 from .base import Base  # noqa
 
-from .tables import (
-    Chat,
-    Scaffold,
-    Cluster,
-    Generation,
-    Population,
-    Meeting,
-    Agent,
-)  # noqa
+from .tables import Scaffold  # noqa
 
 from dotenv import load_dotenv
 

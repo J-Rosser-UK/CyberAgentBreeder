@@ -1,18 +1,9 @@
 import random
 from base import (
     Scaffold,
-    Population,
     initialize_session,
 )
-from discover.seed_scaffolds import (
-    COT,
-    COT_SC,
-    Reflexion,
-    LLM_debate,
-    Take_a_step_back,
-    QD,
-    Role_Assignment,
-)
+from seed import seed_scaffolds
 
 from descriptor import Descriptor, Clusterer
 from evals import Validator
@@ -32,39 +23,29 @@ def initialize_population_id(args) -> str:
     """
     for session in initialize_session():
 
-        archive = [
-            COT,
-            COT_SC,
-            Reflexion,
-            LLM_debate,
-            Take_a_step_back,
-            QD,
-            Role_Assignment,
-        ]
+        archive = seed_scaffolds
 
-        population = Population(session=session, population_benchmark=args.benchmark)
         descriptor = Descriptor()
 
         validator = Validator(args)
-        clusterer = Clusterer()
+        clusterer = Clusterer(args)
 
         generation_timestamp = datetime.datetime.utcnow()
 
         for scaffold in archive:
             scaffold = Scaffold(
                 session=session,
-                scaffold_name=scaffold["name"],
-                scaffold_code=scaffold["code"],
-                scaffold_thought_process=scaffold["thought"],
-                population=population,
+                scaffold_name=scaffold.__name__,
+                scaffold_code=scaffold,
+                scaffold_thought_process=None,
+                population_id=population_id,
                 generation_timestamp=generation_timestamp,
+                scaffold_benchmark=args.benchmark,
             )
-            population.scaffolds.append(scaffold)
 
-        for scaffold in population.scaffolds:
             scaffold.update(scaffold_descriptor=descriptor.generate(scaffold))
 
-        population_id = str(population.population_id)
+        population_id = str(population_id)
 
         scaffolds_for_validation = (
             session.query(Scaffold)
@@ -74,11 +55,7 @@ def initialize_population_id(args) -> str:
 
         validator.validate(scaffolds_for_validation)
 
-        # Re-load the population object in this session
-        population = (
-            session.query(Population).filter_by(population_id=population_id).one()
-        )
         # Recluster the population
-        clusterer.cluster(population)
+        clusterer.cluster(population_id)
 
     return population_id

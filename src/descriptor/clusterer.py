@@ -1,11 +1,12 @@
 import numpy as np
 from sqlalchemy.orm import object_session
 from sklearn.cluster import AgglomerativeClustering
-from base import Cluster, Generation
+from base import Scaffold
+import uuid
 
 
 class Clusterer:
-    def __init__(self, n_clusters=None, metric="euclidean", linkage="ward"):
+    def __init__(self, args=None, n_clusters=None, metric="euclidean", linkage="ward"):
         """
         Initializes the Clusterer class with Agglomerative Clustering (pure hierarchical clustering).
 
@@ -16,7 +17,7 @@ class Clusterer:
             metric (str): The distance metric to use for clustering (e.g., 'euclidean', 'manhattan', etc.).
             linkage (str): Which linkage criterion to use ('ward', 'complete', 'average', 'single').
         """
-
+        self.args = args
         self.n_clusters = n_clusters
         self.metric = metric
         self.linkage = linkage
@@ -28,7 +29,7 @@ class Clusterer:
             linkage=self.linkage,
         )
 
-    def cluster(self, population):
+    def cluster(self, population_id):
         """
         Clusters scaffolds in a population based on their embeddings using pure hierarchical clustering.
 
@@ -39,13 +40,12 @@ class Clusterer:
             np.ndarray: An array of cluster labels for the multi-agent scaffolds in the population.
         """
 
-        session = object_session(population)
+        scaffolds = session.query(Scaffold).filter_by(population_id=population_id).all()
 
-        # Create a new generation
-        generation = Generation(session=session, population_id=population.population_id)
+        session = object_session(scaffolds[0])
 
         # Extract embeddings from population scaffolds
-        embeddings = [scaffold.scaffold_descriptor for scaffold in population.scaffolds]
+        embeddings = [scaffold.scaffold_descriptor for scaffold in scaffolds]
 
         # Make sure each embedding has the same shape; replace mismatches with zeros
         mode_scaffold_shape = np.shape(embeddings[0])[0]
@@ -65,29 +65,19 @@ class Clusterer:
 
         # Example: if you want to handle small populations differently
         if len(embeddings) < 10:
-            # Put each scaffold in its own cluster
-            for scaffold in population.scaffolds:
-                cluster = Cluster(
-                    session=session,
-                    generation_id=generation.generation_id,
-                    population_id=population.population_id,
-                )
-                population.clusters.append(cluster)
-                scaffold.update(cluster_id=cluster.cluster_id)
+            # Put each scaffold in its own cluster with a unique UUID
+            for scaffold in scaffolds:
+                unique_cluster_id = str(uuid.uuid4())
+                scaffold.update(cluster_id=unique_cluster_id)
 
         else:
             # Create one Cluster object per unique label
             for label in unique_labels:
-                cluster = Cluster(
-                    session=session,
-                    generation_id=generation.generation_id,
-                    population_id=population.population_id,
-                )
-                population.clusters.append(cluster)
+                unique_cluster_id = str(uuid.uuid4())
 
                 # Assign scaffolds with the current label to this cluster
-                for i, scaffold in enumerate(population.scaffolds):
+                for i, scaffold in enumerate(scaffolds):
                     if labels[i] == label:
-                        scaffold.update(cluster_id=cluster.cluster_id)
+                        scaffold.update(cluster_id=unique_cluster_id)
 
         return labels

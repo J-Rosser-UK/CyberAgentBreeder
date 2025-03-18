@@ -12,10 +12,7 @@ from base import Scaffold
 from descriptor import Descriptor
 from evals import Validator
 from evals.ctf import CTFBenchmark, CTFSolver, DEFAULT_TOOL_CONFIGS
-from discover.mutation_prompts import (
-    multi_agent_scaffold_mutation_prompts,
-    multi_agent_scaffold_safety_mutation_prompts,
-)
+from discover.mutation_prompts import multi_agent_scaffold_mutation_prompts
 from discover.utils import get_base_prompt_with_archive
 from .evolve import Evolve
 from base import elites
@@ -37,11 +34,7 @@ class Discover:
         self.population_id = self.args.population_id
 
         self.mutation_operators = multi_agent_scaffold_mutation_prompts
-        if self.args.mode in ["blue"]:
-            self.mutation_operators = (
-                multi_agent_scaffold_mutation_prompts
-                + multi_agent_scaffold_safety_mutation_prompts
-            )
+
         self.batch_size = 1
         self.descriptor = Descriptor()
 
@@ -131,6 +124,7 @@ class Discover:
                     scaffold_second_parent_id=scaffold["scaffold_second_parent_id"],
                     population=self.population_id,
                     generation_timestamp=generation_timestamp,
+                    scaffold_benchmark=self.args.benchmark,
                 )
                 self.population_id.scaffolds.append(scaffold)
 

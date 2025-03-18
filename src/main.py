@@ -4,7 +4,7 @@ import logging
 from tqdm import tqdm
 from discover import Discover
 from descriptor import Clusterer
-from base import initialize_session, Population, Scaffold, initialize_population_id
+from base import initialize_session, Scaffold, initialize_population_id
 from evals import Validator
 import os
 import uuid
@@ -22,65 +22,61 @@ logging.getLogger("httpx").disabled = True
 warnings.filterwarnings("ignore", category=SAWarning)
 
 
-def main(args, population_id=None):
+def main(args):
     random.seed(args.random_seed)
 
-    # Initialize population_id only if it doesn't exist
-    if not population_id:
+    # Initialize args.population_id only if it doesn't exist
+    if not args.population_id:
         validator = Validator(args)
         debug_sample = validator.benchmark.dataset[0]
-        clusterer = Clusterer()
-        population_id = initialize_population_id(args)
-        print(f"Population ID: {population_id}")
+        clusterer = Clusterer(args)
+        args.population_id = initialize_population_id(args)
+
+        print(f"Population ID: {args.population_id}")
     else:
         for session in initialize_session():
 
-            # Re-load the population object in this session
-            population = (
-                session.query(Population).filter_by(population_id=population_id).one()
+            args.benchmark = (
+                session.query(Scaffold)
+                .filter_by(population_id=args.population_id)
+                .one()
+                .scaffold_benchmark
             )
 
-            args.benchmark = population.population_benchmark
             validator = Validator(args)
             debug_sample = validator.benchmark.dataset[0]
-            clusterer = Clusterer()
+            clusterer = Clusterer(args)
 
             # Recluster the population
-            clusterer.cluster(population)
-            # assert 1 == 2
+            clusterer.cluster(args.population_id)
 
             # Only choose scaffolds which haven't been validated yet (e.g. scaffold_fitness=None)
             scaffolds_for_validation = (
                 session.query(Scaffold)
-                .filter_by(population_id=population_id, scaffold_fitness=None)
+                .filter_by(population_id=args.population_id, scaffold_fitness=None)
                 .order_by(Scaffold.scaffold_timestamp.desc())
                 .all()[:10]
             )
             validator.validate(scaffolds_for_validation)
 
-            print(f"Reloaded population ID: {population.population_id}")
+            print(f"Reloaded population ID: {args.population_id}")
 
     for session in initialize_session():
         # Begin Bayesian Illumination...
         for g in tqdm(range(args.n_generation), desc="Generations"):
 
-            # Re-load the population object in this session
-            population = (
-                session.query(Population).filter_by(population_id=population_id).one()
-            )
-
-            generator = Discover(args, population, debug_sample)
+            generator = Discover(args, debug_sample)
 
             # Generate a new batch of mutants
             asyncio.run(generator.run_generation(session))
 
             # Recluster the population
-            clusterer.cluster(population)
+            clusterer.cluster(args.population_id)
 
             # Only choose scaffolds which haven't been validated yet (e.g. scaffold_fitness=None)
             scaffolds_for_validation = (
                 session.query(Scaffold)
-                .filter_by(population_id=population_id, scaffold_fitness=None)
+                .filter_by(population_id=args.population_id, scaffold_fitness=None)
                 .all()
             )
 
@@ -89,7 +85,7 @@ def main(args, population_id=None):
 
             session.commit()
 
-    return population_id  # Return the population ID for restarts
+    return args.population_id  # Return the population ID for restarts
 
 
 if __name__ == "__main__":
@@ -105,7 +101,6 @@ if __name__ == "__main__":
     parser.add_argument("--n_mutations", type=int, default=10)
     parser.add_argument("--n_evals", type=int, default=20)
     parser.add_argument("--debug_max", type=int, default=3)
-    parser.add_argument("--mode", type=str, default="ablation")
     parser.add_argument("--model", type=str, default="gpt-4o-mini")
     parser.add_argument("-p", "--population_id", type=str, default="None")
     parser.add_argument("--benchmark", type=str, default="mmlu")
@@ -137,22 +132,19 @@ if __name__ == "__main__":
 
     # args.population_id = "cfda0d48-e4aa-439b-a348-b1433d27d344"
 
-    population_id = args.population_id
-    # population_id = "last"
-    if population_id == "None":
-        population_id = None
+    if args.population_id == "None":
+        args.population_id = None
 
-    if population_id == "last":
+    if args.population_id == "last":
         for session in initialize_session():
-            population = (
-                session.query(Population)
-                .filter(Population.population_benchmark == args.benchmark)
-                .order_by(Population.population_timestamp.desc())
+            scaffold = (
+                session.query(Scaffold)
+                .filter(Scaffold.population_benchmark == args.benchmark)
+                .order_by(Scaffold.population_timestamp.desc())
                 .limit(1)
                 .one()
             )
-            population_id = population.population_id
-            args.population_id = population_id
-            args.benchmark = population.population_benchmark
+            args.population_id = scaffold.population_id
+            args.benchmark = scaffold.population_benchmark
 
-    population_id = main(args, population_id)
+    args.population_id = main(args)

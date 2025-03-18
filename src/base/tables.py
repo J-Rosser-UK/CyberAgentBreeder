@@ -1,7 +1,6 @@
 from sqlalchemy import String, DateTime, ForeignKey, Float, JSON
 from sqlalchemy.orm import relationship, object_session
 from .base import CustomBase, CustomColumn, AutoSaveList
-from .scaffold import Agent, Meeting, Chat
 import datetime
 import uuid
 
@@ -14,6 +13,10 @@ class Scaffold(CustomBase):
         primary_key=True,
         default=lambda: str(uuid.uuid4()),
         label="The scaffold's unique identifier (UUID).",
+    )
+    scaffold_benchmark = CustomColumn(
+        String,
+        label="The benchmark the scaffold belongs to.",
     )
 
     scaffold_first_parent_id = CustomColumn(

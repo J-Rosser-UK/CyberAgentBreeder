@@ -3,11 +3,7 @@ from inspect_ai.dataset import Sample, Dataset
 from inspect_ai.model import GenerateConfig
 from inspect_ai.solver import solver, Solver, TaskState, Generate
 from inspect_ai._eval.eval import eval
-from inspect_ai.scorer import (
-    Score,
-    scorer,
-    accuracy,
-)
+from inspect_ai.scorer import Score, scorer, accuracy, includes
 
 from inspect_ai._util.appdirs import inspect_cache_dir
 from inspect_ai._util.error import pip_dependency_error
@@ -34,10 +30,6 @@ from typing import Any, Union
 import re
 import time
 import random
-
-from api import get_json_completion
-
-from .negative_sampler import get_positive_and_negative_samples
 from .model import CustomModel, CustomModelAPI
 from .metrics import ci_lower, ci_upper, median
 
