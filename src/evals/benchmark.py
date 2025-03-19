@@ -33,8 +33,11 @@ import random
 from .model import CustomModel, CustomModelAPI
 from .metrics import ci_lower, ci_upper, median
 
+from ctf.dataset import read_dataset
+
 
 benchmark_registry = {}
+COMPOSE_FILE = Path.cwd() / "compose.yaml"
 
 
 def register_benchmark(name):
@@ -63,29 +66,30 @@ class Benchmark(ABC):
     def evaluate(self, scaffolds, limit=10, log_d="logs"):
 
         temp_files = []
-        models = []
+        solvers = []
         for scaffold in scaffolds:
-            AgentScaffold, temp_file = Benchmark.get_callable(
+            solver_callable, temp_file = Benchmark.get_callable(
                 scaffold.scaffold_id, scaffold.scaffold_name, scaffold.scaffold_code
             )
+            solvers.append([scaffold.scaffold_name, solver_callable])
             temp_files.append(temp_file)
-
-        self.split = self.split if self.split else "NONE"
 
         tasks = [
             Task(
-                time_limit=self.args.task_timeout,
-                name=self.__class__.__name__,
-                dataset=self.dataset,
-                solver=self.match_solver(),
+                dataset=read_dataset(
+                    # shuffle=shuffle,
+                ),
+                name=solver[0],
+                solver=solver[1],
                 scorer=includes(),
-                config=GenerateConfig(temperature=0.5),
+                sandbox=("docker", COMPOSE_FILE.as_posix()),
             )
+            for solver in solvers
         ]
 
         results = eval(
             tasks,
-            model=models,
+            model=self.args.model,
             limit=limit,
             log_dir=f"./src/{log_d}/{self.split}/{self.args.log_timestamp}/{self.__class__.__name__}-{str(scaffolds[0].population_id)}/logs",  # specify where logs are stored
             log_format="json",  # choose log format ("eval" or "json")
@@ -164,38 +168,28 @@ class Benchmark(ABC):
                 {cleaned_name}_{scaffold_id}_{uuid.uuid4()}.py""".strip()
             )
 
-            # Write the complete AgentScaffold class to the file, including the forward function
+            # Write the complete solver script to the file, including the forward function
             with open(temp_file, "w") as f:
-                f.write("import random\n")
-                f.write("import pandas\n")
-                f.write("import numpy as np\n")
-                f.write("import asyncio\n\n")
-                f.write(f"from base import Agent, Meeting, Chat\n\n")
-                f.write(f"from adas.base import LLMAgentBase, Info\n\n")
-                f.write("class AgentScaffold:\n")
-                f.write("    " + forward_function.replace("\n", "\n    "))
-                f.write("\n\n")
-                f.write("if __name__ == '__main__':\n")
-                f.write("    " + "agent_scaffold = AgentScaffold()\n")
-                f.write(
-                    "    "
-                    + """task = "What should I have for dinner?"""
-                    + "    "
-                    + """A: soup B: burgers C: pizza D: pasta"\n"""
-                )
-                f.write(
-                    "    "
-                    + "output = asyncio.run(agent_scaffold.forward(task, required_answer_format))\n"
-                )
-                f.write("    " + "print(output)\n")
+                f.write(forward_function)
 
-            # Import the AgentScaffold class from the temp file
+            # Import the solver_callable class from the temp file
             spec = importlib.util.spec_from_file_location(
                 "agent_scaffold_temp", temp_file
             )
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            AgentScaffold = module.AgentScaffold
+
+            # Find any function decorated with @solver
+            solver_callable = None
+            for name, obj in module.__dict__.items():
+                if hasattr(obj, "__solver__") and callable(obj):
+                    solver_callable = obj
+                    break
+
+            if solver_callable is None:
+                raise ValueError(
+                    "No function decorated with @solver found in the module"
+                )
 
         except Exception as e:
             print("Error during benchmark evaluation:", e)
@@ -207,297 +201,4 @@ class Benchmark(ABC):
 
             return None, temp_file
 
-        return AgentScaffold, temp_file
-
-    @solver
-    def match_solver(self) -> Solver:
-        async def solve(state: TaskState, generate: Generate) -> TaskState:
-
-            state = await generate(state=state)
-
-            # print("generate", state.output.completion)
-
-            return state
-
-        return solve
-
-    @staticmethod
-    @scorer(metrics=[accuracy(), ci_lower(), ci_upper(), median()])
-    def llm_match():
-        async def score(state, target):
-            if state.output.completion.lower().startswith("error"):
-                return Score(
-                    name="llm_match",
-                    value=0,
-                    answer=state.output.completion,
-                    explanation=f"Error in model response.",
-                )
-
-            messages = [
-                {
-                    "role": "system",
-                    "content": """You are a helpful assistant. Make sure to return in a WELL-FORMED JSON object.""",
-                },
-                {
-                    "role": "user",
-                    "content": f"""
-                Given this task:
-                {state.input}
-                with the correct answer being {target.text}.
-
-                Did this user correctly answer the question? YES or NO. Here is their answer: {state.output.completion}.
-                """,
-                },
-            ]
-            response_format = {
-                "thinking": "One sentence of step-by-step reasoning.",
-                "is_match": "One word, YES or NO.",
-            }
-
-            response = await get_json_completion(
-                messages,
-                response_format,
-                model="gpt-4o-mini",
-                temperature=0.5,
-                retry=0,
-            )
-
-            if "yes" in response.get("is_match", "").lower():
-                accuracy = 1
-            else:
-                accuracy = 0
-
-            return Score(
-                name="llm_match",
-                value=accuracy,
-                answer=state.output.completion,
-                explanation=f"Is answer correct? {response.get('is_match','')}",
-            )
-
-        return score
-
-    @staticmethod
-    @scorer(metrics=[accuracy(), ci_lower(), ci_upper(), median()])
-    def multi_choice_match():
-        async def score(state, target):
-            if state.output.completion.lower().startswith("error"):
-                return Score(
-                    name="multi_choice_match",
-                    value=0,
-                    answer=state.output.completion,
-                    explanation=f"Error in model response.",
-                )
-
-            target_letter = target.text
-            output_letter = state.output.completion
-
-            if target_letter.lower() == output_letter.lower():
-                accuracy = 1
-            elif target_letter in output_letter[0:4] and all(
-                not char.isalpha()
-                for char in output_letter
-                if char.lower() != target_letter.lower()
-            ):
-                accuracy = 1
-            else:
-                accuracy = 0
-
-            return Score(
-                name="multi_choice_match",
-                value=accuracy,
-                answer=state.output.completion,
-                explanation=f"Multi choice",
-            )
-
-        return score
-
-    @abstractmethod
-    @task
-    def match_task(self):
-        pass
-
-    def benchmark_filter(self, example):
-        return True
-
-    def filtered_hf_dataset(
-        self,
-        path: str,
-        split: str,
-        split_mapping: dict,
-        name: Union[str, list] | None = None,
-        data_dir: str | None = None,
-        revision: str | None = None,
-        sample_fields: FieldSpec | RecordToSample | None = None,
-        auto_id: bool = False,
-        shuffle: bool = False,
-        seed: int | None = None,
-        limit: int | None = None,
-        trust: bool = False,
-        cached: bool = True,
-        **kwargs: Any,
-    ) -> Dataset:
-        """
-        Sometimes the datasets contain examples that are too challenging to evaluate on.
-        This function simplifies the dataset by filtering out examples that are too complex.
-        """
-
-        # Ensure required HuggingFace datasets version
-        FEATURE = "Hugging Face Datasets"
-        PACKAGE = "datasets"
-        VERSION = "2.16.0"
-        try:
-            import datasets
-        except ImportError:
-            raise pip_dependency_error(FEATURE, [PACKAGE])
-        verify_required_version(FEATURE, PACKAGE, VERSION)
-
-        # Resolve data-to-sample function
-        data_to_sample = record_to_sample_fn(sample_fields)
-
-        if isinstance(name, str):
-            name = [name]
-
-        final_dataset_mapping = {"validation": [], "test": []}
-        random.seed(time.time())
-        for split_k, split_v in split_mapping.items():
-            for n in name:
-                # Generate cache directory for dataset
-                dataset_hash = mm3_hash(f"{path}{n}{data_dir}{split_v}{kwargs}")
-                datasets_cache_dir = inspect_cache_dir("hf_datasets")
-                dataset_cache_dir = os.path.join(
-                    datasets_cache_dir, f"{safe_filename(path)}-{dataset_hash}"
-                )
-
-                # Load dataset from cache or HuggingFace Hub
-                if os.path.exists(dataset_cache_dir) and cached and revision is None:
-                    dataset = datasets.load_from_disk(dataset_cache_dir)
-                else:
-                    print(f"Loading dataset {path} from Hugging Face...")
-                    dataset = datasets.load_dataset(
-                        path=path,
-                        name=n,
-                        data_dir=data_dir,
-                        split=split_v,
-                        revision=revision,
-                        trust_remote_code=trust,
-                        **kwargs,
-                    )
-
-                    dataset.save_to_disk(dataset_cache_dir)
-
-                dataset = dataset.filter(self.benchmark_filter)
-
-                dataset = dataset.to_list()
-
-                random.shuffle(dataset)
-
-                final_dataset_mapping[split_k].extend(dataset)
-
-        if list(split_mapping.values())[0] == list(split_mapping.values())[1]:
-            print(list(split_mapping.values())[0], list(split_mapping.values())[1])
-            # Assign 20% of the validation set to the validation set and 80% to the test set
-
-            validation_save = list(final_dataset_mapping["validation"])
-            final_dataset_mapping["validation"] = final_dataset_mapping["validation"][
-                : int(len(final_dataset_mapping["validation"]) * 0.5)
-            ]
-
-            final_dataset_mapping["test"] = validation_save[
-                int(len(validation_save) * 0.5) :
-            ]
-        print("Validation length", len(final_dataset_mapping["validation"]))
-        print("Test length", len(final_dataset_mapping["test"]))
-
-        # assert that no elements in the validation set are in the test set
-        for i, element in enumerate(final_dataset_mapping["validation"]):
-            if element in final_dataset_mapping["test"]:
-                print(f"Element {i} is in both validation and test sets")
-                del final_dataset_mapping["validation"][i]
-        final_dataset = final_dataset_mapping[split]
-
-        for record in final_dataset:
-
-            record_content = json.dumps(record, sort_keys=True).encode("utf-8")
-            unique_id = hashlib.sha256(record_content).hexdigest()
-
-            record["unique_id"] = unique_id
-
-        positive_and_negative_samples = get_positive_and_negative_samples(
-            self.__class__.__name__
-        )
-        if positive_and_negative_samples != {} and split == "validation":
-
-            def sample_filter(dat, v):
-                new_dat = []
-                for record in dat:
-
-                    if record["unique_id"] in positive_and_negative_samples[v]:
-                        new_dat.append(record)
-
-                return new_dat
-
-            def not_sample_filter(dat):
-                new_dat = []
-                for record in dat:
-
-                    flag = False
-                    for k, v in positive_and_negative_samples.items():
-                        if record["unique_id"] in v:
-                            flag = True
-
-                    if not flag:
-                        new_dat.append(record)
-
-                return new_dat
-
-            positive_dataset = sample_filter(final_dataset, 1)
-
-            half_limit = limit // 2
-
-            positive_dataset = (
-                positive_dataset * (half_limit // len(positive_dataset))
-                + positive_dataset[: half_limit % len(positive_dataset)]
-            )
-
-            random.shuffle(positive_dataset)
-
-            positive_dataset = positive_dataset[:half_limit]
-
-            negative_dataset = sample_filter(final_dataset, 0)
-
-            negative_dataset = (
-                negative_dataset * (half_limit // len(negative_dataset))
-                + negative_dataset[: half_limit % len(negative_dataset)]
-            )
-
-            random.shuffle(negative_dataset)
-
-            negative_dataset = negative_dataset[:half_limit]
-
-            half_limit = limit // 2
-
-            final_dataset = positive_dataset + negative_dataset
-
-            random.shuffle(final_dataset)
-
-        else:
-            # repeat to ensure dataset is at least 'limit' long
-            final_dataset = (
-                final_dataset * (limit // len(final_dataset))
-                + final_dataset[: limit % len(final_dataset)]
-            )
-
-        random.shuffle(final_dataset)
-
-        random.seed(self.args.random_seed)
-
-        time.sleep(3)
-
-        print("Final dataset length", len(final_dataset))
-
-        # Return filtered dataset
-        return MemoryDataset(
-            samples=data_to_samples(final_dataset, data_to_sample, auto_id),
-            name=Path(path).stem if Path(path).exists() else path,
-            location=path,
-        )
+        return solver_callable, temp_file

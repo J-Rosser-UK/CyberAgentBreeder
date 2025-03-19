@@ -1,5 +1,4 @@
 import random
-from api import get_json_completion
 from discover.meta_agent_prompts import REFLECTION_PROMPT_1
 import os
 import uuid
@@ -9,6 +8,39 @@ import json
 import re
 import asyncio
 from evals import Benchmark
+from pathlib import Path
+import glob
+from base import elites
+import openai
+
+client = openai.OpenAI()
+
+
+def load_prompt_with_examples(session):
+    """Load the prompt.md file and replace example scaffolds with actual examples from database."""
+    prompt_path = Path(__file__).parent / "prompt.md"
+
+    with open(prompt_path, "r") as f:
+        prompt_content = f.read()
+
+    # Get elite scaffolds from the database
+    elite_scaffolds = elites(
+        session, None
+    )  # None for population_id means get all elites
+
+    # Format each example scaffold
+    example_scaffolds = []
+    for scaffold in elite_scaffolds:
+        if scaffold.scaffold_reasoning:  # Only include scaffolds with thought process
+            example_scaffolds.append(
+                f"<{scaffold.scaffold_name}>\n{scaffold.scaffold_reasoning}\n</{scaffold.scaffold_name}>"
+            )
+
+    # Replace the placeholder with actual examples
+    example_section = "\n\n".join(example_scaffolds)
+    prompt_content = prompt_content.replace("{{EXAMPLE_SCAFFOLDS}}", example_section)
+
+    return prompt_content
 
 
 class Evolve:
@@ -21,6 +53,7 @@ class Evolve:
         base_prompt,
         base_prompt_response_format,
         debug_sample,
+        session,
     ) -> None:
         """
         Initializes the Evolve class.
@@ -32,14 +65,16 @@ class Evolve:
             population: The population of scaffolds for mutation.
             mutation_operators: A list of mutation operator strings to apply.
             evaluator: An evaluator object for validating and testing evolved scaffolds.
+            session: Database session for loading example scaffolds.
         """
 
         self.mutation_operators = mutation_operators
-
         self.args = args
         self.evaluator = evaluator
+        self.session = session
 
-        self.base_prompt = base_prompt
+        # Load the prompt with examples if base_prompt is None
+        self.base_prompt = base_prompt or load_prompt_with_examples(session)
         self.base_prompt_response_format = base_prompt_response_format
 
         self.debug_sample = debug_sample
@@ -61,26 +96,26 @@ class Evolve:
         while (not mutated_scaffold or not scaffold_response.get("code")) and i < 3:
             i += 1
             try:
-                (
-                    scaffold_response,
-                    messages,
-                    reflexion_response_format,
-                    parent_scaffold_ids,
-                    sampled_mutation,
-                ) = await random.choice([self._mutate, self._mutate, self._crossover])(
-                    parents
-                )
 
-                scaffold_response = await self._debug(
-                    messages, scaffold_response, reflexion_response_format
-                )
+                mutation_operator = random.choice([self._mutate, self._crossover])
+
+                (
+                    scaffold_name,
+                    scaffold_code,
+                    scaffold_reasoning,
+                    sampled_mutation,
+                ) = await mutation_operator(parents)
 
                 mutated_scaffold = {
-                    "scaffold_name": scaffold_response["name"],
-                    "scaffold_code": scaffold_response["code"],
-                    "scaffold_first_parent_id": str(parent_scaffold_ids[0]),
-                    "scaffold_second_parent_id": str(parent_scaffold_ids[1]),
-                    "scaffold_thought_process": scaffold_response["thought"],
+                    "scaffold_name": scaffold_name,
+                    "scaffold_code": scaffold_code,
+                    "scaffold_first_parent_id": str(parents[0]["scaffold_id"]),
+                    "scaffold_second_parent_id": (
+                        str(parents[1]["scaffold_id"])
+                        if mutation_operator == self._crossover
+                        else None
+                    ),
+                    "scaffold_reasoning": scaffold_reasoning,
                     "scaffold_mutation_prompt": (
                         sampled_mutation if sampled_mutation else ""
                     ),
@@ -123,7 +158,7 @@ class Evolve:
 
                 ---------------
                 Scaffold: {scaffold.get('scaffold_name')}
-                {scaffold.get("scaffold_thought_process")}
+                {scaffold.get("scaffold_reasoning")}
                 ---------------
                 {scaffold.get("scaffold_code")}
 
@@ -146,9 +181,7 @@ class Evolve:
             },
         ]
 
-        return await self._evolve(
-            messages, [parents[0].get("scaffold_id"), None], sampled_mutation
-        )
+        return await self._evolve(messages, sampled_mutation)
 
     async def _crossover(self, parents: list[dict]):
         """
@@ -184,13 +217,13 @@ class Evolve:
 
                 ---------------
                 Scaffold 1: {scaffold_1.get('scaffold_name')}
-                {scaffold_1.get("scaffold_thought_process")}
+                {scaffold_1.get("scaffold_reasoning")}
                 ---------------
                 {scaffold_1.get("scaffold_code")}
 
                 ---------------
                 Scaffold 2: {scaffold_2.get('scaffold_name')}
-                {scaffold_2.get("scaffold_thought_process")}
+                {scaffold_2.get("scaffold_reasoning")}
                 ---------------
                 {scaffold_2.get("scaffold_code")}   
 
@@ -202,53 +235,34 @@ class Evolve:
             },
         ]
 
-        return await self._evolve(
-            messages,
-            [parents[0].get("scaffold_id"), parents[1].get("scaffold_id")],
-            None,
-        )
+        return await self._evolve(messages, None)
 
-    async def _evolve(self, messages, parent_scaffold_ids, sampled_mutation):
+    async def _evolve(self, messages, sampled_mutation):
 
         # Generate new solution and do reflection
         try:
 
-            next_response: dict[str, str] = await get_json_completion(
-                messages,
-                self.base_prompt_response_format,
-                model="anthropic.claude-3-5-sonnet-20241022-v2:0",
-                temperature=0.5,
-                retry=0,
-            )
-            # print(next_response)
-
-            # Reflexion 1
-            REFLECTION_PROMPT_1, reflexion_response_format = (
-                self._get_reflexion_prompt_1(next_response)
+            output = await client.chat.completions.create(
+                model="gpt-4o",
+                messages=messages,
             )
 
-            messages.append({"role": "assistant", "content": str(next_response)})
-            messages.append({"role": "user", "content": REFLECTION_PROMPT_1})
-            next_response = await get_json_completion(
-                messages,
-                reflexion_response_format,
-                model="gpt-4o",
-                temperature=0.5,
-                retry=0,
+            response = output.choices[0].message.content
+
+            # Parse the response to extract scaffold_name, scaffold_code, and scaffold_reasoning
+            scaffold_name = (
+                re.search(r"<name>(.*?)</name>", response, re.DOTALL).group(1).strip()
             )
-            # Reflexion 2
-            Reflexion_prompt_2 = """Using the tips in "## WRONG Implementation examples" section,
-            revise the code further. Put your new reflection thinking in "reflection". Repeat the
-            previous "thought" and "name", and update the corrected version of the code in "code".
-            """
-            messages.append({"role": "assistant", "content": str(next_response)})
-            messages.append({"role": "user", "content": Reflexion_prompt_2})
-            next_response = await get_json_completion(
-                messages,
-                reflexion_response_format,
-                model="gpt-4o",
-                temperature=0.5,
-                retry=0,
+            # Clean up the scaffold to only allow numbers, letters, hyphens and underscores
+            scaffold_name = re.sub(r"[^A-Za-z0-9 \-\u2013\u2014]+", "", scaffold_name)
+
+            scaffold_code = (
+                re.search(r"<code>(.*?)</code>", response, re.DOTALL).group(1).strip()
+            )
+            scaffold_reasoning = (
+                re.search(r"<reasoning>(.*?)</reasoning>", response, re.DOTALL)
+                .group(1)
+                .strip()
             )
 
         except Exception as e:
@@ -257,133 +271,4 @@ class Evolve:
 
             return None
 
-        # Clean up the scaffold to only allow numbers, letters, hyphens and underscores
-        next_response["name"] = re.sub(
-            r"[^A-Za-z0-9 \-\u2013\u2014]+", "", next_response["name"]
-        )
-
-        return (
-            next_response,
-            messages,
-            reflexion_response_format,
-            parent_scaffold_ids,
-            sampled_mutation,
-        )
-
-    def _get_reflexion_prompt_1(self, prev_example):
-
-        prev_example_str = (
-            "Here is the previous agent you tried:\n"
-            + json.dumps(prev_example)
-            + "\n\n"
-        )
-        r1 = (
-            REFLECTION_PROMPT_1.replace("[EXAMPLE]", prev_example_str)
-            if prev_example
-            else REFLECTION_PROMPT_1.replace("[EXAMPLE]", "")
-        )
-        reflexion_response_format = {
-            "reflection": """
-                Provide your thoughts on the interestingness of the architecture,
-                identify any mistakes in the implementation, and suggest improvements.
-            """,
-            "thought": """
-                Revise your previous proposal or propose a new architecture if necessary,
-                using the same format as the example response.
-            """,
-            "name": """
-                Provide a name for the revised or new architecture. (Don't put words like
-                'new' or 'improved' in the name.)
-            """,
-            "code": """
-                Provide the corrected code or an improved implementation. Make sure you
-                actually implement your fix and improvement in this code.
-            """,
-        }
-
-        return r1, reflexion_response_format
-
-    async def _debug(self, messages, next_response, reflexion_response_format):
-        """
-        Handles debugging for a given response during mutation.
-
-        Args:
-            messages: List of messages exchanged during the mutation process.
-            next_response: The generated response containing the multi-agent scaffold code and metadata.
-            reflexion_response_format: The response format for reflection.
-
-        Returns:
-            dict: The updated next_response after debugging attempts.
-        """
-
-        agent_scaffold, temp_file = Benchmark.get_callable(
-            str(uuid.uuid4()), next_response["name"], next_response["code"]
-        )
-
-        for d in range(self.args.debug_max):
-
-            try:
-
-                if "return self.forward" in next_response["code"]:
-                    raise AgentScaffoldException(
-                        """The output of the forward function must not be the forward function
-                        itself, as it will recurse infinitely."""
-                    )
-
-                if "return await self.forward" in next_response["code"]:
-                    raise Exception("Infinite loop detected")
-                agentScaffold = agent_scaffold()
-                # Set a timeout of 3 minutes (180 seconds)
-                try:
-                    print(self.debug_sample)
-                    input = self.debug_sample.input
-                    format = self.debug_sample.metadata["format"]
-
-                    print("Input", input)
-                    print("Format", format)
-                    output = await asyncio.wait_for(
-                        agentScaffold.forward(input, format), timeout=720
-                    )
-                except asyncio.TimeoutError:
-                    next_response["code"] = None
-                    break
-                    # raise AgentScaffoldException(
-                    #     """The forward function took too long to execute. Make sure your code
-                    #     is efficient and doesn't have any infinite loops."""
-                    # )
-                except Exception as e:
-                    raise AgentScaffoldException(e)
-
-                if output.lower().startswith("error"):
-                    raise AgentScaffoldException(output)
-                print("Debug successful")
-                break
-
-            except AgentScaffoldException as e:
-                logging.info(f"Debugging meta agent's code: {e}")
-                messages.append({"role": "assistant", "content": str(next_response)})
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": f"""Error during evaluation:\n{e}\nCarefully consider where
-                        you went wrong in your latest implementation. Using insights from
-                        previous attempts, try to debug the current code to implement the
-                        same thought. Repeat your previous thought in 'thought', and put
-                        your thinking for debugging in 'debug_thought'""",
-                    }
-                )
-                try:
-                    next_response = await get_json_completion(
-                        messages,
-                        reflexion_response_format,
-                        model=self.args.model,
-                        temperature=0.5,
-                        retry=0,
-                    )
-                except Exception as e:
-                    print(f"Error during debugging: {e}")
-                    next_response["code"] = None
-
-        os.remove(temp_file)
-
-        return next_response
+        return scaffold_name, scaffold_code, scaffold_reasoning, sampled_mutation

@@ -63,9 +63,9 @@ class Scaffold(CustomBase):
     scaffold_descriptor = CustomColumn(
         JSON, label="The embedding of the multi-agent scaffold as a list of floats."
     )
-    scaffold_thought_process = CustomColumn(
+    scaffold_reasoning = CustomColumn(
         String,
-        label="The thought process that went into creating the multi-agent scaffold.",
+        label="The reasoning that went into creating the multi-agent scaffold.",
     )
     cluster_id = CustomColumn(
         String,

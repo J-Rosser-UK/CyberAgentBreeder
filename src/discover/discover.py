@@ -11,10 +11,9 @@ from tqdm import tqdm
 from base import Scaffold
 from descriptor import Descriptor
 from evals import Validator
-from evals.ctf import CTFBenchmark, CTFSolver, DEFAULT_TOOL_CONFIGS
+from evals.ctf import IntercodeCTFBenchmark, DEFAULT_TOOL_CONFIGS
 from discover.mutation_prompts import multi_agent_scaffold_mutation_prompts
-from discover.utils import get_base_prompt_with_archive
-from .evolve import Evolve
+from .evolve import Evolve, load_prompt_with_examples
 from base import elites
 
 
@@ -43,17 +42,18 @@ class Discover:
         self.base_prompt_response_format = None
 
         # Initialize CTF benchmark
-        self.ctf_benchmark = CTFBenchmark(args=args)
-        self.ctf_solver = CTFSolver(config=DEFAULT_TOOL_CONFIGS)
+        self.ctf_benchmark = IntercodeCTFBenchmark(args=args)
 
     async def generate_offspring(
         self,
         parents,
+        session,
     ):
         """Generate offspring from parents.
 
         Args:
             parents: List of parent scaffolds
+            session: Database session
 
         Returns:
             Generated offspring scaffold
@@ -66,6 +66,7 @@ class Discover:
                 self.base_prompt,
                 self.base_prompt_response_format,
                 self.debug_sample,
+                session,
             )
             offspring_scaffold = await evolver.evolve(parents)
 
@@ -92,15 +93,19 @@ class Discover:
 
             parents.append((scaffold_1, scaffold_2))
 
-        self.base_prompt, self.base_prompt_response_format = (
-            get_base_prompt_with_archive(self.args, session)
-        )
+        # Load the prompt with examples from database
+        self.base_prompt = load_prompt_with_examples(session)
+        self.base_prompt_response_format = {
+            "thought": "Your explanation of the design choices, structure, and any important considerations for the scaffold.",
+            "name": "The snake-case name of the scaffold. E.g. react_and_plan",
+            "code": "The complete Python script for the new scaffold.",
+        }
 
         generation_timestamp = datetime.datetime.utcnow()
 
         # Create tasks for all mutations
         tasks = [
-            asyncio.create_task(self.generate_offspring(parents[i]))
+            asyncio.create_task(self.generate_offspring(parents[i], session))
             for i in range(self.args.n_mutations)
         ]
 
@@ -119,7 +124,7 @@ class Discover:
                     session=session,
                     scaffold_name=scaffold["scaffold_name"],
                     scaffold_code=scaffold["scaffold_code"],
-                    scaffold_thought_process=scaffold["scaffold_thought_process"],
+                    scaffold_reasoning=scaffold["scaffold_reasoning"],
                     scaffold_first_parent_id=scaffold["scaffold_first_parent_id"],
                     scaffold_second_parent_id=scaffold["scaffold_second_parent_id"],
                     population=self.population_id,

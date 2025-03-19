@@ -128,7 +128,7 @@ def get_base_prompt_with_archive(args, session):
         if scaffold.scaffold_name not in [a["name"] for a in archive_jsonl]:
             archive_jsonl.append(
                 {
-                    "thought": scaffold.scaffold_thought_process,
+                    "thought": scaffold.scaffold_reasoning,
                     "name": scaffold.scaffold_name,
                     "code": scaffold.scaffold_agent_code,
                     "fitness": str(scaffold.scaffold_capability_ci_median),

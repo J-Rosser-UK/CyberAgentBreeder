@@ -37,7 +37,7 @@ def initialize_population_id(args) -> str:
                 session=session,
                 scaffold_name=scaffold.__name__,
                 scaffold_code=scaffold,
-                scaffold_thought_process=None,
+                scaffold_reasoning=None,
                 population_id=population_id,
                 generation_timestamp=generation_timestamp,
                 scaffold_benchmark=args.benchmark,

@@ -11,9 +11,9 @@ from inspect_ai.solver import (
 )
 from inspect_ai.tool import bash, python
 
-from dataset import read_dataset
-from react_and_plan_agent import react_and_plan_agent, DEFAULT_TOOL_CONFIGS
-from cyber_recon_scaffold import cyber_recon_scaffold
+from src.evals.ctf import read_dataset
+from src.seed.react_and_plan_agent import react_and_plan_agent, DEFAULT_TOOL_CONFIGS
+from src.seed.cyber_recon_scaffold import cyber_recon_scaffold
 from inspect_ai._eval.eval import eval
 
 

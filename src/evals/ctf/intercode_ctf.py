@@ -13,9 +13,12 @@ from inspect_ai.scorer import includes
 
 from evals.benchmark import Benchmark, register_benchmark
 from .dataset import read_dataset
-from .solvers import CTFSolver, DEFAULT_TOOL_CONFIGS
 
 COMPOSE_FILE = Path.cwd() / "compose.yaml"
+DEFAULT_TOOL_CONFIGS = {
+    "bash": {"timeout": 180},
+    "python": {"timeout": 180},
+}
 
 
 @register_benchmark("intercode_ctf")
@@ -40,16 +43,3 @@ class IntercodeCTFBenchmark(Benchmark):
         self.split = split
         self.args = args
         self.dataset = read_dataset(shuffle=shuffle, limit=limit)
-
-    @task
-    def match_task(self):
-        """Create the CTF task."""
-        return Task(
-            time_limit=self.args.task_timeout if self.args else 180,
-            name=self.__class__.__name__,
-            dataset=self.dataset,
-            solver=CTFSolver(),
-            scorer=includes(),
-            config=GenerateConfig(temperature=0.5),
-            sandbox=("docker", COMPOSE_FILE.as_posix()),
-        )
