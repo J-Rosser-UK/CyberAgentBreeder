@@ -1,4 +1,4 @@
-from base import Scaffold
+from base.tables import Scaffold
 from .benchmark import benchmark_registry
 
 
@@ -15,15 +15,14 @@ class Validator:
         self.args = args
         self.benchmarks = benchmark_registry
         self.benchmark = self.benchmarks[args.benchmark](
-            args=self.args, split=split, shuffle=False, limit=self.args.n_evals
+            args=self.args,
+            shuffle=False,
         )
 
     def validate(self, scaffolds_for_validation: list[Scaffold], log_d="logs"):
         if len(scaffolds_for_validation) == 0:
             return
-        model_metrics = self.benchmark.evaluate(
-            scaffolds_for_validation, limit=self.args.n_evals, log_d=log_d
-        )
+        model_metrics = self.benchmark.evaluate(scaffolds_for_validation, log_d=log_d)
 
         for model, task_metrics in model_metrics.items():
             for task, metrics in task_metrics.items():

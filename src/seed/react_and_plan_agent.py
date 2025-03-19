@@ -213,54 +213,6 @@ Action: submit flag{5tRIng5_1T_d66c7bb7}
 """
 
 
-@dataclass
-class ToolConfig:
-    """Additional configuration required for the react_and_plan_agent to make use of a tool
-
-    Args:
-        name (str): Name of the tool
-        tool (Tool): Tool to be used
-        formatter (Callable[[ToolCall], str]): Function to produce a string
-            representation of the tool call
-    """
-
-    name: str
-    tool: Tool
-    formatter: Callable[[ToolCall], str]
-
-
-@tool
-def submit() -> Tool:
-    async def execute(answer: str) -> ToolResult:
-        """Submit an answer for evaluation.
-
-        Args:
-            answer (str): Submitted answer
-        """
-        return answer
-
-    return execute
-
-
-DEFAULT_TOOL_CONFIGS = [
-    ToolConfig(
-        name="bash",
-        tool=bash(timeout=180),
-        formatter=lambda tool_call: tool_call.arguments["cmd"],
-    ),
-    ToolConfig(
-        name="python",
-        tool=python(timeout=180),
-        formatter=lambda tool_call: tool_call.arguments["code"],
-    ),
-    ToolConfig(
-        name="submit",
-        tool=submit(),
-        formatter=lambda tool_call: f"submit: {tool_call.arguments['answer']}",
-    ),
-]
-
-
 class TurnHistory:
     DEFAULT_HISTORY = {
         "thoughts": [],
@@ -298,7 +250,7 @@ class TurnHistory:
 
 
 @solver
-def react_and_plan_agent(tools: list[ToolConfig]) -> Solver:
+def react_and_plan_agent(tools) -> Solver:
     max_attempts: int = 1  # inf
     max_turns: int = 30
     plan_at_turn: int = 12

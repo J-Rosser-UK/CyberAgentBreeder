@@ -1,16 +1,10 @@
-from abc import ABC, abstractmethod
+from abc import ABC
+
 from inspect_ai import Task
-from inspect_ai.dataset import Sample
-from inspect_ai.model import GenerateConfig
 from inspect_ai.scorer import includes
 from inspect_ai._eval.eval import eval
-from inspect_ai.tool import Tool
-
 
 import os
-from typing import Any
-
-from pathlib import Path
 
 
 benchmark_registry = {}
@@ -39,14 +33,12 @@ class AgentScaffoldException(Exception):
 
 class Benchmark(ABC):
 
-    def evaluate(self, scaffolds, limit=10, log_d="logs"):
+    def evaluate(self, scaffolds, log_d="logs"):
 
-        temp_files = []
         solvers = []
         for scaffold in scaffolds:
-            solver_callable, temp_file = Benchmark.get_callable(scaffold.scaffold_code)
+            solver_callable = self.get_callable(scaffold.scaffold_code)
             solvers.append([scaffold.scaffold_name, solver_callable])
-            temp_files.append(temp_file)
 
         tasks = [
             Task(
@@ -62,18 +54,12 @@ class Benchmark(ABC):
         results = eval(
             tasks,
             model=self.args.model,
-            limit=limit,
-            log_dir=f"./src/{log_d}/{self.split}/{self.args.log_timestamp}/{self.__class__.__name__}-{str(scaffolds[0].population_id)}/logs",  # specify where logs are stored
+            limit=self.args.n_evals,
+            log_dir=f"./src/{log_d}/{self.args.log_timestamp}/{self.__class__.__name__}-{str(scaffolds[0].population_id)}/logs",  # specify where logs are stored
             log_format="json",  # choose log format ("eval" or "json")
             score=True,  # ensure scoring is enable
             max_tasks=500,
         )
-
-        for temp_file in temp_files:
-            try:
-                os.remove(temp_file)
-            except Exception as e:
-                print("Error removing temp file:", e)
 
         # 'results' is a list of EvalLog objects (usually one per task)
         # Each EvalLog contains metrics for the entire task/dataset.
@@ -86,10 +72,7 @@ class Benchmark(ABC):
             task_name = res.eval.task
 
             # 2) Initialize defaults (or None) for each metric
-            accuracy = None
-            ci_lower = None
-            ci_upper = None
-            median = None
+            accuracy, ci_lower, ci_upper, median = None, None, None, None
 
             # 3) Check if results and scores exist
             if res.results and res.results.scores:
@@ -121,8 +104,7 @@ class Benchmark(ABC):
 
         return model_metrics
 
-    @staticmethod
-    def get_callable(scaffold_code: str) -> tuple[callable, str]:
+    def get_callable(self, scaffold_code: str) -> callable:
         """
         Convert the scaffold code into a callable function.
 
@@ -130,7 +112,7 @@ class Benchmark(ABC):
             scaffold_code (str): The scaffold code to convert.
 
         Returns:
-            tuple: A tuple containing the callable function and the module name.
+            callable: The callable function.
         """
         import importlib.util
         import sys
@@ -157,4 +139,4 @@ class Benchmark(ABC):
                 "No function decorated with @solver found in the scaffold code."
             )
 
-        return solver_function, module_name
+        return solver_function

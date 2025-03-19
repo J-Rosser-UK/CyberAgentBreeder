@@ -1,14 +1,9 @@
-import random
 import os
-import inspect
-from base import (
-    Scaffold,
-    initialize_session,
-)
-from seed import seed_scaffolds
 
-from descriptor import Descriptor, Clusterer
-from evals import Validator
+from .tables import Scaffold
+from .session import initialize_session
+
+from descriptor import Descriptor
 
 import datetime
 import uuid
@@ -77,8 +72,7 @@ def initialize_population_id(args) -> str:
         seed_scaffolds = scan_seed_directory()
 
         descriptor = Descriptor()
-        validator = Validator(args)
-        clusterer = Clusterer(args)
+
         generation_timestamp = datetime.datetime.utcnow()
 
         # Create Scaffold objects from seed files
@@ -94,17 +88,4 @@ def initialize_population_id(args) -> str:
             )
             scaffold.update(scaffold_descriptor=descriptor.generate(scaffold))
 
-        population_id = str(population_id)
-
-        scaffolds_for_validation = (
-            session.query(Scaffold)
-            .filter_by(population_id=population_id, scaffold_capability_ci_median=None)
-            .all()
-        )
-
-        validator.validate(scaffolds_for_validation)
-
-        # Recluster the population
-        clusterer.cluster(population_id)
-
-    return population_id
+    return str(population_id)

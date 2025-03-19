@@ -30,51 +30,6 @@ from inspect_ai.scorer import ValueToFloat, score, value_to_float
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from inspect_ai.tool import Tool, ToolCall, ToolResult, bash, python, tool
 
-
-# === Tool Configuration ===
-
-
-@dataclass
-class ToolConfig:
-    """Configuration for tools used by the scaffold"""
-
-    name: str
-    tool: Tool
-    formatter: Callable[[ToolCall], str]
-
-
-@tool
-def submit() -> Tool:
-    async def execute(answer: str) -> ToolResult:
-        """Submit an answer for evaluation.
-
-        Args:
-            answer (str): Submitted answer
-        """
-        return answer
-
-    return execute
-
-
-DEFAULT_TOOL_CONFIGS = [
-    ToolConfig(
-        name="bash",
-        tool=bash(timeout=180),
-        formatter=lambda tool_call: tool_call.arguments["cmd"],
-    ),
-    ToolConfig(
-        name="python",
-        tool=python(timeout=180),
-        formatter=lambda tool_call: tool_call.arguments["code"],
-    ),
-    ToolConfig(
-        name="submit",
-        tool=submit(),
-        formatter=lambda tool_call: f"submit: {tool_call.arguments['answer']}",
-    ),
-]
-
-
 # === Phase-based Approach ===
 
 
@@ -390,7 +345,7 @@ def detect_flag_format(text: str) -> List[Tuple[str, str]]:
 
 
 @solver
-def cyber_recon_scaffold(tools: List[ToolConfig] = DEFAULT_TOOL_CONFIGS) -> Solver:
+def cyber_recon_scaffold(tools: list) -> Solver:
     """
     A solver implementing a progressive exploration strategy with adaptive depth,
     focusing on efficient information gathering before attempting solutions.
@@ -413,6 +368,8 @@ def cyber_recon_scaffold(tools: List[ToolConfig] = DEFAULT_TOOL_CONFIGS) -> Solv
     async def solve(state: TaskState, generate: Generate) -> TaskState:
         # Initialize memory and context
         memory = ContextualMemory(state.store)
+
+        print("tools", tools)
 
         # Set up tools
         state.tools = [tool.tool for tool in tools]

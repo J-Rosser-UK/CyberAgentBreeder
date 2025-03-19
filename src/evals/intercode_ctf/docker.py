@@ -45,11 +45,16 @@ DEFAULT_PIP3_INSTALLS = [
 ]
 
 
-def generate_dockerfile(apt_get_installs: list[str], pip3_installs: list[str]) -> None:
+def generate_dockerfile(
+    apt_get_installs: list[str] = DEFAULT_APT_GET_INSTALLS,
+    pip3_installs: list[str] = DEFAULT_PIP3_INSTALLS,
+) -> None:
     current_dir = Path.cwd()
 
-    template_path = current_dir / "src" / "evals" / "ctf" / "Dockerfile.template"
-    dockerfile_path = current_dir / "src" / "evals" / "ctf" / "Dockerfile"
+    template_path = (
+        current_dir / "src" / "evals" / "intercode_ctf" / "Dockerfile.template"
+    )
+    dockerfile_path = current_dir / "src" / "evals" / "intercode_ctf" / "Dockerfile"
 
     with open(template_path, "r") as template_file:
         template_content = template_file.read()

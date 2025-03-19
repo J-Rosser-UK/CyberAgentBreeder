@@ -1,5 +1,4 @@
 import random
-from discover.meta_agent_prompts import REFLECTION_PROMPT_1
 import os
 import uuid
 from evals import AgentScaffoldException

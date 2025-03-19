@@ -1,9 +1,4 @@
-"""
-Dataset handling for CTF tasks.
-"""
-
 from pathlib import Path
-from typing import Optional
 
 from inspect_ai.dataset import Dataset, Sample, json_dataset
 
@@ -16,7 +11,6 @@ from textwrap import dedent
 from typing import Any
 
 import requests
-from inspect_ai.dataset import Dataset, Sample, json_dataset
 from platformdirs import user_cache_dir
 
 

@@ -27,41 +27,36 @@ def main(args):
 
     # Initialize args.population_id only if it doesn't exist
     if not args.population_id:
-        validator = Validator(args)
-        debug_sample = validator.benchmark.dataset[0]
-        clusterer = Clusterer(args)
+
         args.population_id = initialize_population_id(args)
 
         print(f"Population ID: {args.population_id}")
-    else:
-        for session in initialize_session():
 
-            args.benchmark = (
-                session.query(Scaffold)
-                .filter_by(population_id=args.population_id)
-                .one()
-                .scaffold_benchmark
+    for session in initialize_session():
+
+        validator = Validator(args)
+        debug_sample = validator.benchmark.dataset[0]
+        clusterer = Clusterer(args)
+
+        scaffolds = (
+            session.query(Scaffold).filter_by(population_id=args.population_id).all()
+        )
+
+        # Recluster the population
+        clusterer.cluster(scaffolds)
+
+        # Only choose scaffolds which haven't been validated yet (e.g. scaffold_capability_ci_median=None)
+        scaffolds_for_validation = (
+            session.query(Scaffold)
+            .filter_by(
+                population_id=args.population_id, scaffold_capability_ci_median=None
             )
+            .order_by(Scaffold.scaffold_timestamp.desc())
+            .all()[:10]
+        )
+        validator.validate(scaffolds_for_validation)
 
-            validator = Validator(args)
-            debug_sample = validator.benchmark.dataset[0]
-            clusterer = Clusterer(args)
-
-            # Recluster the population
-            clusterer.cluster(args.population_id)
-
-            # Only choose scaffolds which haven't been validated yet (e.g. scaffold_capability_ci_median=None)
-            scaffolds_for_validation = (
-                session.query(Scaffold)
-                .filter_by(
-                    population_id=args.population_id, scaffold_capability_ci_median=None
-                )
-                .order_by(Scaffold.scaffold_timestamp.desc())
-                .all()[:10]
-            )
-            validator.validate(scaffolds_for_validation)
-
-            print(f"Reloaded population ID: {args.population_id}")
+        print(f"Reloaded population ID: {args.population_id}")
 
     for session in initialize_session():
         # Begin Bayesian Illumination...
@@ -72,8 +67,14 @@ def main(args):
             # Generate a new batch of mutants
             asyncio.run(generator.run_generation(session))
 
+            scaffolds = (
+                session.query(Scaffold)
+                .filter_by(population_id=args.population_id)
+                .all()
+            )
+
             # Recluster the population
-            clusterer.cluster(args.population_id)
+            clusterer.cluster(scaffolds)
 
             # Only choose scaffolds which haven't been validated yet (e.g. scaffold_capability_ci_median=None)
             scaffolds_for_validation = (
@@ -103,7 +104,7 @@ if __name__ == "__main__":
     parser.add_argument("--random_seed", type=int, default=40)
     parser.add_argument("--n_generation", type=int, default=10)
     parser.add_argument("--n_mutations", type=int, default=10)
-    parser.add_argument("--n_evals", type=int, default=20)
+    parser.add_argument("--n_evals", type=int, default=5)
     parser.add_argument("--debug_max", type=int, default=3)
     parser.add_argument("--model", type=str, default="openai/gpt-4o-mini")
     parser.add_argument("-p", "--population_id", type=str, default="None")

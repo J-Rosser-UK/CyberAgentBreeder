@@ -11,7 +11,8 @@ from tqdm import tqdm
 from base import Scaffold
 from descriptor import Descriptor
 from evals import Validator
-from evals.ctf import IntercodeCTFBenchmark, DEFAULT_TOOL_CONFIGS
+from evals.intercode_ctf.intercode_ctf import IntercodeCTFBenchmark
+
 from discover.mutation_prompts import multi_agent_scaffold_mutation_prompts
 from .evolve import Evolve, load_prompt_with_examples
 from base import elites

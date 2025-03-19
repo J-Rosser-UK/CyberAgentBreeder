@@ -29,7 +29,7 @@ class Clusterer:
             linkage=self.linkage,
         )
 
-    def cluster(self, population_id):
+    def cluster(self, scaffolds):
         """
         Clusters scaffolds in a population based on their embeddings using pure hierarchical clustering.
 
@@ -39,8 +39,6 @@ class Clusterer:
         Returns:
             np.ndarray: An array of cluster labels for the multi-agent scaffolds in the population.
         """
-
-        scaffolds = session.query(Scaffold).filter_by(population_id=population_id).all()
 
         session = object_session(scaffolds[0])
 

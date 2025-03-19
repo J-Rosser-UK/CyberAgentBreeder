@@ -6,14 +6,9 @@ from inspect_ai.dataset import Dataset
 from ..benchmark import Benchmark, register_benchmark
 from .dataset import read_dataset
 from .docker import generate_dockerfile, DEFAULT_APT_GET_INSTALLS, DEFAULT_PIP3_INSTALLS
+from .tools import DEFAULT_TOOL_CONFIGS
 
-COMPOSE_FILE = Path.cwd() / "src/evals/ctf/compose.yaml"
-
-print(COMPOSE_FILE)
-DEFAULT_TOOL_CONFIGS = {
-    "bash": {"timeout": 180},
-    "python": {"timeout": 180},
-}
+COMPOSE_FILE = Path.cwd() / "src/evals/intercode_ctf/compose.yaml"
 
 
 @register_benchmark("intercode_ctf")
@@ -23,9 +18,7 @@ class IntercodeCTFBenchmark(Benchmark):
     def __init__(
         self,
         args=None,
-        split: Union[Literal["validation"], Literal["test"]] = "validation",
         shuffle: bool = True,
-        limit: int = 100,
     ) -> Dataset:
         """Initialize the CTF benchmark.
 
@@ -35,7 +28,7 @@ class IntercodeCTFBenchmark(Benchmark):
             shuffle: Whether to shuffle the dataset
             limit: Maximum number of samples to use
         """
-        self.split = split
+
         self.args = args
         generate_dockerfile(DEFAULT_APT_GET_INSTALLS, DEFAULT_PIP3_INSTALLS)
         self.dataset = read_dataset(shuffle=shuffle)
