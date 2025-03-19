@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="assets/agentbreeder_no_background.png" alt="CyberAgentBreeder" width="200" height="auto" />
+  <img src="assets/agentbreeder_no_background.png" alt="AgentBreeder" width="200" height="auto" />
   <h1>CyberAgentBreeder</h1>
   
   <p>
@@ -43,7 +43,7 @@
 
 <br />
 
- <img src="assets/CyberAgentBreederDiagramJPG.jpg" alt="CyberAgentBreeder" width="auto" height="auto" />
+ <img src="assets/AgentBreederDiagramJPG.jpg" alt="CyberAgentBreeder" width="auto" height="auto" />
 
 ## Abstract
 
