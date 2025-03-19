@@ -35,7 +35,7 @@ def main(args):
     for session in initialize_session():
 
         validator = Validator(args)
-        debug_sample = validator.benchmark.dataset[0]
+
         clusterer = Clusterer(args)
 
         scaffolds = (
@@ -58,11 +58,10 @@ def main(args):
 
         print(f"Reloaded population ID: {args.population_id}")
 
-    for session in initialize_session():
         # Begin Bayesian Illumination...
         for g in tqdm(range(args.n_generation), desc="Generations"):
 
-            generator = Discover(args, debug_sample)
+            generator = Discover(args)
 
             # Generate a new batch of mutants
             asyncio.run(generator.run_generation(session))

@@ -16,11 +16,12 @@ from evals import (
 
 generate_dockerfile()
 
-
 solvers = [
     react_and_plan_agent(DEFAULT_TOOL_CONFIGS),
     cyber_recon_scaffold(DEFAULT_TOOL_CONFIGS),
 ]
+
+print(solvers[0], solvers[0].__name__)
 
 tasks = [
     Task(

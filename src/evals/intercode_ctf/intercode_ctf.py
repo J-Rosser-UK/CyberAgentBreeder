@@ -2,7 +2,8 @@ from pathlib import Path
 from typing import Any, Literal, Union
 
 from inspect_ai.dataset import Dataset
-
+from inspect_ai import Task
+from inspect_ai.scorer import includes
 from ..benchmark import Benchmark, register_benchmark
 from .dataset import read_dataset
 from .docker import generate_dockerfile, DEFAULT_APT_GET_INSTALLS, DEFAULT_PIP3_INSTALLS
@@ -30,6 +31,18 @@ class IntercodeCTFBenchmark(Benchmark):
         """
 
         self.args = args
+        self.shuffle = shuffle
         generate_dockerfile(DEFAULT_APT_GET_INSTALLS, DEFAULT_PIP3_INSTALLS)
-        self.dataset = read_dataset(shuffle=shuffle)
-        self.sandbox = ("docker", COMPOSE_FILE.as_posix())
+
+    def tasks(self, solvers) -> list[Task]:
+        dataset = read_dataset(shuffle=self.shuffle)
+        return [
+            Task(
+                dataset=dataset,
+                name=solver(DEFAULT_TOOL_CONFIGS).__name__,
+                solver=solver(DEFAULT_TOOL_CONFIGS),
+                scorer=includes(),
+                sandbox=("docker", COMPOSE_FILE.as_posix()),
+            )
+            for solver in solvers
+        ]

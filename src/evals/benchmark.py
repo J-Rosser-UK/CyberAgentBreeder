@@ -5,7 +5,12 @@ from inspect_ai.scorer import includes
 from inspect_ai._eval.eval import eval
 
 import os
-
+import ast
+import importlib.util
+import inspect
+import sys
+from typing import Any, Callable, Dict, List, Tuple, Union
+from types import ModuleType
 
 benchmark_registry = {}
 
@@ -35,24 +40,13 @@ class Benchmark(ABC):
 
     def evaluate(self, scaffolds, log_d="logs"):
 
-        solvers = []
-        for scaffold in scaffolds:
-            solver_callable = self.get_callable(scaffold.scaffold_code)
-            solvers.append([scaffold.scaffold_name, solver_callable])
-
-        tasks = [
-            Task(
-                dataset=self.dataset,
-                name=solver[0],
-                solver=solver[1],
-                scorer=includes(),
-                sandbox=self.sandbox,
-            )
-            for solver in solvers
+        solvers = [
+            self.extract_solver_functions(str(scaffold.scaffold_code))
+            for scaffold in scaffolds
         ]
 
         results = eval(
-            tasks,
+            self.tasks(solvers),
             model=self.args.model,
             limit=self.args.n_evals,
             log_dir=f"./src/{log_d}/{self.args.log_timestamp}/{self.__class__.__name__}-{str(scaffolds[0].population_id)}/logs",  # specify where logs are stored
@@ -104,39 +98,46 @@ class Benchmark(ABC):
 
         return model_metrics
 
-    def get_callable(self, scaffold_code: str) -> callable:
+    @staticmethod
+    def extract_solver_functions(code_string, module_name="dynamic_module"):
         """
-        Convert the scaffold code into a callable function.
+        Extract callable solver functions from a Python code string.
 
         Args:
-            scaffold_code (str): The scaffold code to convert.
+            code_string (str): A string containing Python code
+            module_name (str): Name to give the dynamically created module
 
         Returns:
-            callable: The callable function.
+            list: A list of callable solver functions that are decorated with @solver
         """
-        import importlib.util
-        import sys
-        from types import ModuleType
+        # Create a temporary module to execute the code
+        module = ModuleType(module_name)
+        sys.modules[module_name] = module
 
-        module_name = "scaffold_module"
-        spec = importlib.util.spec_from_loader(module_name, loader=None)
-        scaffold_module = importlib.util.module_from_spec(spec)
-        exec(scaffold_code, scaffold_module.__dict__)
-        sys.modules[module_name] = scaffold_module
+        # Execute the code string in the context of the module
+        exec(code_string, module.__dict__)
 
-        # Find the function decorated with @solver
-        solver_function = None
-        for attr_name in dir(scaffold_module):
-            attr = getattr(scaffold_module, attr_name)
+        # Parse the code string to find solver-decorated function names
+        tree = ast.parse(code_string)
+        solver_function_names = []
 
-            if callable(attr) and attr.__name__ == "solver_wrapper":
-                print(attr)
-                solver_function = attr
-                break
+        # Find all solver-decorated functions
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef):
+                if node.decorator_list:
+                    for decorator in node.decorator_list:
+                        if (
+                            isinstance(decorator, ast.Name) and decorator.id == "solver"
+                        ) or (
+                            isinstance(decorator, ast.Attribute)
+                            and decorator.attr == "solver"
+                        ):
+                            solver_function_names.append(node.name)
 
-        if solver_function is None:
-            raise ValueError(
-                "No function decorated with @solver found in the scaffold code."
-            )
+        # Get the actual function objects from the module
+        solver_functions = []
+        for name in solver_function_names:
+            if hasattr(module, name):
+                solver_functions.append(getattr(module, name))
 
-        return solver_function
+        return solver_functions[-1]

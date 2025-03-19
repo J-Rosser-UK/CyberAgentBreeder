@@ -21,16 +21,16 @@ from base import elites
 class Discover:
     """Main discovery class for evolving CTF agents."""
 
-    def __init__(self, args, debug_sample) -> None:
+    def __init__(self, args) -> None:
         """Initialize the Discover class.
 
         Args:
             args: Arguments object containing configurations
             population: Population instance to operate on
-            debug_sample: Sample to use for debugging
+
         """
         self.args = args
-        self.debug_sample = debug_sample
+
         self.population_id = self.args.population_id
 
         self.mutation_operators = multi_agent_scaffold_mutation_prompts
@@ -66,7 +66,6 @@ class Discover:
                 self.validator,
                 self.base_prompt,
                 self.base_prompt_response_format,
-                self.debug_sample,
                 session,
             )
             offspring_scaffold = await evolver.evolve(parents)
