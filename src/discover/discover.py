@@ -63,9 +63,6 @@ class Discover:
             evolver = Evolve(
                 self.args,
                 self.mutation_operators,
-                self.validator,
-                self.base_prompt,
-                self.base_prompt_response_format,
                 session,
             )
             offspring_scaffold = await evolver.evolve(parents)

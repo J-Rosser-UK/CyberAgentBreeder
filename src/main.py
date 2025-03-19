@@ -1,19 +1,16 @@
 import argparse
 import random
 import logging
+import os
+import time
+import warnings
+import asyncio
 from tqdm import tqdm
+from sqlalchemy.exc import SAWarning
 from discover import Discover
 from descriptor import Clusterer
 from base import initialize_session, Scaffold, initialize_population_id
 from evals import Validator
-import os
-import uuid
-import asyncio
-import datetime
-import warnings
-from sqlalchemy.exc import SAWarning
-import time
-
 
 # Disable logging for httpx
 logging.getLogger("httpx").disabled = True
@@ -27,15 +24,11 @@ def main(args):
 
     # Initialize args.population_id only if it doesn't exist
     if not args.population_id:
-
         args.population_id = initialize_population_id(args)
-
         print(f"Population ID: {args.population_id}")
 
     for session in initialize_session():
-
         validator = Validator(args)
-
         clusterer = Clusterer(args)
 
         scaffolds = (
@@ -45,7 +38,7 @@ def main(args):
         # Recluster the population
         clusterer.cluster(scaffolds)
 
-        # Only choose scaffolds which haven't been validated yet (e.g. scaffold_capability_ci_median=None)
+        # Only choose scaffolds which haven't been validated yet
         scaffolds_for_validation = (
             session.query(Scaffold)
             .filter_by(
@@ -59,8 +52,7 @@ def main(args):
         print(f"Reloaded population ID: {args.population_id}")
 
         # Begin Bayesian Illumination...
-        for g in tqdm(range(args.n_generation), desc="Generations"):
-
+        for _ in tqdm(range(args.n_generation), desc="Generations"):
             generator = Discover(args)
 
             # Generate a new batch of mutants
@@ -75,7 +67,7 @@ def main(args):
             # Recluster the population
             clusterer.cluster(scaffolds)
 
-            # Only choose scaffolds which haven't been validated yet (e.g. scaffold_capability_ci_median=None)
+            # Only choose scaffolds which haven't been validated yet
             scaffolds_for_validation = (
                 session.query(Scaffold)
                 .filter_by(
@@ -84,9 +76,7 @@ def main(args):
                 .all()
             )
 
-            validator = Validator(args)
             validator.validate(scaffolds_for_validation)
-
             session.commit()
 
     return args.population_id  # Return the population ID for restarts
@@ -97,7 +87,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     current_directory = os.path.dirname(os.path.abspath(__file__))
-    log_timestamp_str = str(time.strftime("%Y%m%d-%H%M%S"))
+    log_timestamp_str = time.strftime("%Y%m%d-%H%M%S")
     parser.add_argument("--current_dir", type=str, default=current_directory)
     parser.add_argument("--log_timestamp", type=str, default=log_timestamp_str)
     parser.add_argument("--random_seed", type=int, default=40)

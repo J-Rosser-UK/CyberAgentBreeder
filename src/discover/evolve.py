@@ -15,7 +15,7 @@ import openai
 client = openai.OpenAI()
 
 
-def load_prompt_with_examples(session):
+def load_prompt_with_examples(args, session):
     """Load the prompt.md file and replace example scaffolds with actual examples from database."""
     prompt_path = Path(__file__).parent / "prompt.md"
 
@@ -23,16 +23,24 @@ def load_prompt_with_examples(session):
         prompt_content = f.read()
 
     # Get elite scaffolds from the database
-    elite_scaffolds = elites(
-        session, None
-    )  # None for population_id means get all elites
+    elite_scaffolds = elites(session, args.population_id)
 
     # Format each example scaffold
     example_scaffolds = []
-    for scaffold in elite_scaffolds:
-        if scaffold.scaffold_reasoning:  # Only include scaffolds with thought process
+    for i, scaffold in enumerate(elite_scaffolds):
+        if scaffold.scaffold_reasoning:  # Only include scaffolds with reasoning
             example_scaffolds.append(
-                f"<{scaffold.scaffold_name}>\n{scaffold.scaffold_reasoning}\n</{scaffold.scaffold_name}>"
+                f"<example_scaffold_{i+1}>\n"
+                + "<reasoning>"
+                + f"{scaffold.scaffold_reasoning}"
+                + "</reasoning>\n"
+                + "<name>"
+                + f"<{scaffold.scaffold_name}>"
+                + "</name>\n"
+                + "<code>"
+                + f"{scaffold.scaffold_code}"
+                + "</code>\n"
+                + "</example_scaffold_{i+1}>"
             )
 
     # Replace the placeholder with actual examples
@@ -48,10 +56,6 @@ class Evolve:
         self,
         args,
         mutation_operators,
-        evaluator,
-        base_prompt,
-        base_prompt_response_format,
-        debug_sample,
         session,
     ) -> None:
         """
@@ -60,33 +64,27 @@ class Evolve:
         Args:
             args: Arguments object containing configurations for the mutator, such
             as debugging limits and model settings.
-
-            population: The population of scaffolds for mutation.
             mutation_operators: A list of mutation operator strings to apply.
-            evaluator: An evaluator object for validating and testing evolved scaffolds.
             session: Database session for loading example scaffolds.
         """
 
         self.mutation_operators = mutation_operators
         self.args = args
-        self.evaluator = evaluator
+
         self.session = session
 
         # Load the prompt with examples if base_prompt is None
-        self.base_prompt = base_prompt or load_prompt_with_examples(session)
-        self.base_prompt_response_format = base_prompt_response_format
-
-        self.debug_sample = debug_sample
+        self.base_prompt = load_prompt_with_examples(args, session)
 
     async def evolve(self, parents: list[dict]) -> dict:
         """
         Applies a mutation to a given scaffold.
 
         Args:
-            scaffold (Scaffold): The scaffold object to mutate.
+            parents (list[dict]): The parents of the scaffold to mutate.
 
         Returns:
-            Scaffold: The mutated scaffold object. Returns None if the mutation fails.
+            dict: The mutated scaffold object. Returns None if the mutation fails.
         """
 
         mutated_scaffold = None
@@ -131,7 +129,7 @@ class Evolve:
         Applies a sampled mutation to a scaffold and refines it using reflexion-based prompts.
 
         Args:
-            None
+            parents (list[dict]): The parents of the scaffold to mutate.
 
         Returns:
             tuple: A tuple containing the next_response (dict), the updated messages (list),
@@ -146,40 +144,23 @@ class Evolve:
         messages = [
             {
                 "role": "user",
-                "content": """You are a helpful assistant. Make sure to return in a WELL-FORMED JSON object.""",
-            },
-            {
-                "role": "user",
                 "content": f"""
                 {self.base_prompt}
              
                 Here is the multi-agent scaffold I would like you to mutate:
 
-                ---------------
-                Scaffold: {scaffold.get('scaffold_name')}
-                {scaffold.get("scaffold_reasoning")}
-                ---------------
-                {scaffold.get("scaffold_code")}
+                <scaffold_for_mutation>
+                <name>{scaffold.get('scaffold_name')}</name>
+                <reasoning>{scaffold.get("scaffold_reasoning")}</reasoning>
+                <code>{scaffold.get("scaffold_code")}</code>
+                </scaffold_for_mutation>
 
+               
                 The mutation I would like to apply is:
+                <mutation_operator>
                 {sampled_mutation}
+                </mutation_operator>
 
-                
-                IMPORTANT:
-                In general, the new scaffold will perform better with more detailed prompts for the agents, more planning steps,
-                encouringing them to think longer and harder. It may be worth adding a final agent to the scaffold to help
-                transform the output of the final agent into the desired output format for the task as the scaffold will be scored
-                very lowley if the output is not in the correct format, even if the thinking was sound.
-
-                CRITICAL REQUIREMENT:
-                The scaffold code MUST include the @solver decorator on the main function. This is required for the scaffold to work.
-                The function signature should be: @solver def scaffold_name(...parameters...): -> Solver
-                Inside this function, you must define an async solve(state: TaskState, generate: Generate) -> TaskState function.
-
-                Ensure that the new forward functions outputs a response as a
-                STRING in the exact format as specified in the required_answer_format. This could be
-                either a single letter (e.g. A, B, C, D) or a word or phrase, or a 
-                short piece of code.
                 
                 """.strip(),
             },
@@ -210,36 +191,24 @@ class Evolve:
         messages = [
             {
                 "role": "user",
-                "content": """You are a helpful assistant. Make sure to return in a WELL-FORMED JSON object.""",
-            },
-            {
-                "role": "user",
                 "content": f"""
                 {self.base_prompt}
              
                 Here are the two scaffolds I'd like you to crossover/combine into a novel new scaffold:
 
-                ---------------
-                Scaffold 1: {scaffold_1.get('scaffold_name')}
-                {scaffold_1.get("scaffold_reasoning")}
-                ---------------
-                {scaffold_1.get("scaffold_code")}
+                <scaffold_for_crossover_1>
+                    <name>{scaffold_1.get('scaffold_name')}</name>
+                    <reasoning>{scaffold_1.get("scaffold_reasoning")}</reasoning>
+                    <code>{scaffold_1.get("scaffold_code")}</code>
+                </scaffold_for_crossover_1>
 
-                ---------------
-                Scaffold 2: {scaffold_2.get('scaffold_name')}
-                {scaffold_2.get("scaffold_reasoning")}
-                ---------------
-                {scaffold_2.get("scaffold_code")}   
+                <scaffold_for_crossover_2>
+                    <name>{scaffold_2.get('scaffold_name')}</name>
+                    <reasoning>{scaffold_2.get("scaffold_reasoning")}</reasoning>
+                    <code>{scaffold_2.get("scaffold_code")}</code>
+                </scaffold_for_crossover_2>
 
-                Ensure that the new forward functions outputs a response as a
-                STRING in the exact format as specified in the required_answer_format. This could be
-                either a single letter (e.g. A, B, C, D) or a word or phrase, or a 
-                short piece of code.
-
-                CRITICAL REQUIREMENT:
-                The scaffold code MUST include the @solver decorator on the main function. This is required for the scaffold to work.
-                The function signature should be: @solver def scaffold_name(...parameters...): -> Solver
-                Inside this function, you must define an async solve(state: TaskState, generate: Generate) -> TaskState function.
+                
                 """.strip(),
             },
         ]
