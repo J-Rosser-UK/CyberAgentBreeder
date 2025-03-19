@@ -106,7 +106,7 @@ def get_base_prompt_with_archive(args, session):
 
     BASE_PROMPT = BASE_PROMPT.replace("[SCAFFOLD_CODE]", scaffold_agent_code)
 
-    # Only choose scaffolds which haven't been validated yet (e.g. scaffold_fitness=None)
+    # Only choose scaffolds which haven't been validated yet (e.g. scaffold_capability_ci_median=None)
     init_archive = (
         session.query(Scaffold)
         .filter_by(population_id=args.population_id, scaffold_first_parent_id=None)
@@ -116,7 +116,7 @@ def get_base_prompt_with_archive(args, session):
     archive = (
         session.query(Scaffold)
         .filter_by(population_id=args.population_id)
-        .order_by(Scaffold.scaffold_fitness.desc())
+        .order_by(Scaffold.scaffold_capability_ci_median.desc())
         .all()[:10]
     )
 

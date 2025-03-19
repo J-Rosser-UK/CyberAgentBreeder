@@ -1,20 +1,15 @@
-"""
-CTF benchmark implementation for the CyberAgentBreeder project.
-"""
-
 from pathlib import Path
-from textwrap import dedent
 from typing import Any, Literal, Union
 
-from inspect_ai import Task, task
-from inspect_ai.dataset import Dataset, Sample
-from inspect_ai.model import GenerateConfig
-from inspect_ai.scorer import includes
+from inspect_ai.dataset import Dataset
 
-from evals.benchmark import Benchmark, register_benchmark
+from ..benchmark import Benchmark, register_benchmark
 from .dataset import read_dataset
+from .docker import generate_dockerfile, DEFAULT_APT_GET_INSTALLS, DEFAULT_PIP3_INSTALLS
 
-COMPOSE_FILE = Path.cwd() / "compose.yaml"
+COMPOSE_FILE = Path.cwd() / "src/evals/ctf/compose.yaml"
+
+print(COMPOSE_FILE)
 DEFAULT_TOOL_CONFIGS = {
     "bash": {"timeout": 180},
     "python": {"timeout": 180},
@@ -42,4 +37,6 @@ class IntercodeCTFBenchmark(Benchmark):
         """
         self.split = split
         self.args = args
-        self.dataset = read_dataset(shuffle=shuffle, limit=limit)
+        generate_dockerfile(DEFAULT_APT_GET_INSTALLS, DEFAULT_PIP3_INSTALLS)
+        self.dataset = read_dataset(shuffle=shuffle)
+        self.sandbox = ("docker", COMPOSE_FILE.as_posix())

@@ -1,6 +1,5 @@
-from sqlalchemy import String, DateTime, ForeignKey, Float, JSON
-from sqlalchemy.orm import relationship, object_session
-from .base import CustomBase, CustomColumn, AutoSaveList
+from sqlalchemy import String, DateTime, Float, JSON
+from .base import CustomBase, CustomColumn
 import datetime
 import uuid
 
@@ -44,7 +43,6 @@ class Scaffold(CustomBase):
 
     population_id = CustomColumn(
         String,
-        ForeignKey("population.population_id"),
         label="The population's unique identifier (UUID).",
     )
     scaffold_name = CustomColumn(String, label="The name of the multi-agent scaffold.")
@@ -119,7 +117,7 @@ def elites(session, population_id) -> list[Scaffold]:
 
 def _find_elite(scaffolds):
     """
-    Returns the multi-agent scaffold with the highest scaffold_fitness in the cluster.
+    Returns the multi-agent scaffold with the highest scaffold_capability_ci_median in the cluster.
     If no scaffolds are associated with the cluster, returns None.
     """
     # Query the Scaffold table for the highest fitness scaffold in this cluster

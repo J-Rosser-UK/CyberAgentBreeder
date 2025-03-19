@@ -39,10 +39,9 @@ class Validator:
                     if str(scaffold.scaffold_id) == model.split("||")[1]:
                         if task == self.benchmarks[self.args.benchmark].__name__:
                             scaffold.update(
-                                scaffold_fitness=metrics["median"],
+                                scaffold_capability_ci_median=metrics["median"],
                                 scaffold_capability_ci_sample_size=self.args.n_evals,
                                 scaffold_capability_ci_lower=metrics["ci_lower"],
                                 scaffold_capability_ci_upper=metrics["ci_upper"],
-                                scaffold_capability_ci_median=metrics["median"],
                                 scaffold_capability_ci_confidence_level=0.95,
                             )

@@ -172,6 +172,11 @@ class Evolve:
                 transform the output of the final agent into the desired output format for the task as the scaffold will be scored
                 very lowley if the output is not in the correct format, even if the thinking was sound.
 
+                CRITICAL REQUIREMENT:
+                The scaffold code MUST include the @solver decorator on the main function. This is required for the scaffold to work.
+                The function signature should be: @solver def scaffold_name(...parameters...): -> Solver
+                Inside this function, you must define an async solve(state: TaskState, generate: Generate) -> TaskState function.
+
                 Ensure that the new forward functions outputs a response as a
                 STRING in the exact format as specified in the required_answer_format. This could be
                 either a single letter (e.g. A, B, C, D) or a word or phrase, or a 
@@ -230,7 +235,12 @@ class Evolve:
                 Ensure that the new forward functions outputs a response as a
                 STRING in the exact format as specified in the required_answer_format. This could be
                 either a single letter (e.g. A, B, C, D) or a word or phrase, or a 
-                short piece of code.             
+                short piece of code.
+
+                CRITICAL REQUIREMENT:
+                The scaffold code MUST include the @solver decorator on the main function. This is required for the scaffold to work.
+                The function signature should be: @solver def scaffold_name(...parameters...): -> Solver
+                Inside this function, you must define an async solve(state: TaskState, generate: Generate) -> TaskState function.
                 """.strip(),
             },
         ]
@@ -264,6 +274,11 @@ class Evolve:
                 .group(1)
                 .strip()
             )
+
+            # Validate that the scaffold code includes the @solver decorator
+            if "@solver" not in scaffold_code:
+                print("Error: Generated scaffold code missing @solver decorator")
+                return None
 
         except Exception as e:
             print("During LLM generate new solution:")

@@ -50,10 +50,12 @@ def main(args):
             # Recluster the population
             clusterer.cluster(args.population_id)
 
-            # Only choose scaffolds which haven't been validated yet (e.g. scaffold_fitness=None)
+            # Only choose scaffolds which haven't been validated yet (e.g. scaffold_capability_ci_median=None)
             scaffolds_for_validation = (
                 session.query(Scaffold)
-                .filter_by(population_id=args.population_id, scaffold_fitness=None)
+                .filter_by(
+                    population_id=args.population_id, scaffold_capability_ci_median=None
+                )
                 .order_by(Scaffold.scaffold_timestamp.desc())
                 .all()[:10]
             )
@@ -73,10 +75,12 @@ def main(args):
             # Recluster the population
             clusterer.cluster(args.population_id)
 
-            # Only choose scaffolds which haven't been validated yet (e.g. scaffold_fitness=None)
+            # Only choose scaffolds which haven't been validated yet (e.g. scaffold_capability_ci_median=None)
             scaffolds_for_validation = (
                 session.query(Scaffold)
-                .filter_by(population_id=args.population_id, scaffold_fitness=None)
+                .filter_by(
+                    population_id=args.population_id, scaffold_capability_ci_median=None
+                )
                 .all()
             )
 
@@ -101,36 +105,12 @@ if __name__ == "__main__":
     parser.add_argument("--n_mutations", type=int, default=10)
     parser.add_argument("--n_evals", type=int, default=20)
     parser.add_argument("--debug_max", type=int, default=3)
-    parser.add_argument("--model", type=str, default="gpt-4o-mini")
+    parser.add_argument("--model", type=str, default="openai/gpt-4o-mini")
     parser.add_argument("-p", "--population_id", type=str, default="None")
-    parser.add_argument("--benchmark", type=str, default="mmlu")
+    parser.add_argument("--benchmark", type=str, default="intercode_ctf")
     parser.add_argument("--task_timeout", type=int, default=30 * 60)
 
     args = parser.parse_args()
-
-    # benchmarks = [
-    #     # "math_500",  # hard
-    #     "gpqa",  # easy
-    #     "math",
-    #     "mmlu",  # hard
-    #     "drop",  # easy
-    #     # "arc",
-    #     # "simple_qa",
-    #     # "clrs_text",
-    #     # "salad_data",
-    #     # "mgsm", #saturated
-    # ]
-
-    # # benchmarks = ["arc"]
-
-    # # args.population_id = "last"
-
-    # for benchmark in benchmarks:
-
-    #     # try:
-    #     args.benchmark = benchmark
-
-    # args.population_id = "cfda0d48-e4aa-439b-a348-b1433d27d344"
 
     if args.population_id == "None":
         args.population_id = None

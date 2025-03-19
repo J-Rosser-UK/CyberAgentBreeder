@@ -1,4 +1,6 @@
 import random
+import os
+import inspect
 from base import (
     Scaffold,
     initialize_session,
@@ -9,6 +11,53 @@ from descriptor import Descriptor, Clusterer
 from evals import Validator
 
 import datetime
+import uuid
+
+
+def scan_seed_directory():
+    """
+    Scans the seed directory for Python files containing scaffold definitions.
+    Each scaffold should have:
+    1. A docstring at the top containing scaffold_reasoning
+    2. A function decorated with @solver that is the scaffold_code
+    3. The function name is the scaffold_name
+
+    Returns:
+        list: List of tuples containing (scaffold_name, scaffold_code, scaffold_reasoning)
+    """
+    scaffolds = []
+    seed_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "seed")
+
+    # Get all Python files in seed directory
+    for filename in os.listdir(seed_dir):
+        if filename.endswith(".py") and not filename.startswith("__"):
+            file_path = os.path.join(seed_dir, filename)
+
+            # Read the file content
+            with open(file_path, "r") as f:
+                content = f.read()
+
+            # Extract docstring (scaffold_reasoning)
+            docstring = ""
+            if content.startswith('"""'):
+                docstring_end = content.find('"""', 3)
+                if docstring_end != -1:
+                    docstring = content[3:docstring_end].strip()
+
+            # Find the @solver decorated function
+            lines = content.split("\n")
+            for i, line in enumerate(lines):
+                if "@solver" in line:
+                    # Get the function definition
+                    func_def = lines[i + 1].strip()
+                    if func_def.startswith("def "):
+                        scaffold_name = (
+                            func_def.split("(")[0].replace("def ", "").strip()
+                        )
+                        scaffolds.append((scaffold_name, content, docstring))
+                    break
+
+    return scaffolds
 
 
 def initialize_population_id(args) -> str:
@@ -22,34 +71,34 @@ def initialize_population_id(args) -> str:
         str: The unique ID of the initialized population.
     """
     for session in initialize_session():
+        population_id = str(uuid.uuid4())
 
-        archive = seed_scaffolds
+        # Get scaffolds from seed directory
+        seed_scaffolds = scan_seed_directory()
 
         descriptor = Descriptor()
-
         validator = Validator(args)
         clusterer = Clusterer(args)
-
         generation_timestamp = datetime.datetime.utcnow()
 
-        for scaffold in archive:
+        # Create Scaffold objects from seed files
+        for scaffold_name, scaffold_code, scaffold_reasoning in seed_scaffolds:
             scaffold = Scaffold(
                 session=session,
-                scaffold_name=scaffold.__name__,
-                scaffold_code=scaffold,
-                scaffold_reasoning=None,
+                scaffold_name=scaffold_name,
+                scaffold_code=scaffold_code,
+                scaffold_reasoning=scaffold_reasoning,
                 population_id=population_id,
                 generation_timestamp=generation_timestamp,
                 scaffold_benchmark=args.benchmark,
             )
-
             scaffold.update(scaffold_descriptor=descriptor.generate(scaffold))
 
         population_id = str(population_id)
 
         scaffolds_for_validation = (
             session.query(Scaffold)
-            .filter_by(population_id=population_id, scaffold_fitness=None)
+            .filter_by(population_id=population_id, scaffold_capability_ci_median=None)
             .all()
         )
 

@@ -1,43 +1,19 @@
-from inspect_ai import Task, task
-from inspect_ai.dataset import Sample, Dataset
+from abc import ABC, abstractmethod
+from inspect_ai import Task
+from inspect_ai.dataset import Sample
 from inspect_ai.model import GenerateConfig
-from inspect_ai.solver import solver, Solver, TaskState, Generate
+from inspect_ai.scorer import includes
 from inspect_ai._eval.eval import eval
-from inspect_ai.scorer import Score, scorer, accuracy, includes
+from inspect_ai.tool import Tool
 
-from inspect_ai._util.appdirs import inspect_cache_dir
-from inspect_ai._util.error import pip_dependency_error
-from inspect_ai._util.file import safe_filename
-from inspect_ai._util.hash import mm3_hash
-from inspect_ai._util.version import verify_required_version
 
-from inspect_ai.dataset._dataset import (
-    Dataset,
-    FieldSpec,
-    MemoryDataset,
-    RecordToSample,
-)
-from inspect_ai.dataset._util import data_to_samples, record_to_sample_fn
+import os
+from typing import Any
 
 from pathlib import Path
-import hashlib
-from abc import ABC, abstractmethod
-import os
-import importlib.util
-import uuid
-import json
-from typing import Any, Union
-import re
-import time
-import random
-from .model import CustomModel, CustomModelAPI
-from .metrics import ci_lower, ci_upper, median
-
-from ctf.dataset import read_dataset
 
 
 benchmark_registry = {}
-COMPOSE_FILE = Path.cwd() / "compose.yaml"
 
 
 def register_benchmark(name):
@@ -68,21 +44,17 @@ class Benchmark(ABC):
         temp_files = []
         solvers = []
         for scaffold in scaffolds:
-            solver_callable, temp_file = Benchmark.get_callable(
-                scaffold.scaffold_id, scaffold.scaffold_name, scaffold.scaffold_code
-            )
+            solver_callable, temp_file = Benchmark.get_callable(scaffold.scaffold_code)
             solvers.append([scaffold.scaffold_name, solver_callable])
             temp_files.append(temp_file)
 
         tasks = [
             Task(
-                dataset=read_dataset(
-                    # shuffle=shuffle,
-                ),
+                dataset=self.dataset,
                 name=solver[0],
                 solver=solver[1],
                 scorer=includes(),
-                sandbox=("docker", COMPOSE_FILE.as_posix()),
+                sandbox=self.sandbox,
             )
             for solver in solvers
         ]
@@ -149,56 +121,40 @@ class Benchmark(ABC):
 
         return model_metrics
 
-    @abstractmethod
-    def _record_to_sample(self, record: dict[str, Any]) -> Sample:
-        pass
-
     @staticmethod
-    def get_callable(scaffold_id, scaffold_name, scaffold_code) -> tuple:
+    def get_callable(scaffold_code: str) -> tuple[callable, str]:
+        """
+        Convert the scaffold code into a callable function.
 
-        try:
-            forward_function = scaffold_code
-            # Create the agent scaffold in temporary code
-            current_directory = os.path.dirname(os.path.abspath(__file__))
-            parent_directory = os.path.dirname(current_directory)
-            cleaned_name = re.sub(r"[^A-Za-z0-9 ]+", "", scaffold_name)
-            temp_file = (
-                f"""{parent_directory}/temp/agent_scaffold_temp_"""
-                + f"""
-                {cleaned_name}_{scaffold_id}_{uuid.uuid4()}.py""".strip()
+        Args:
+            scaffold_code (str): The scaffold code to convert.
+
+        Returns:
+            tuple: A tuple containing the callable function and the module name.
+        """
+        import importlib.util
+        import sys
+        from types import ModuleType
+
+        module_name = "scaffold_module"
+        spec = importlib.util.spec_from_loader(module_name, loader=None)
+        scaffold_module = importlib.util.module_from_spec(spec)
+        exec(scaffold_code, scaffold_module.__dict__)
+        sys.modules[module_name] = scaffold_module
+
+        # Find the function decorated with @solver
+        solver_function = None
+        for attr_name in dir(scaffold_module):
+            attr = getattr(scaffold_module, attr_name)
+
+            if callable(attr) and attr.__name__ == "solver_wrapper":
+                print(attr)
+                solver_function = attr
+                break
+
+        if solver_function is None:
+            raise ValueError(
+                "No function decorated with @solver found in the scaffold code."
             )
 
-            # Write the complete solver script to the file, including the forward function
-            with open(temp_file, "w") as f:
-                f.write(forward_function)
-
-            # Import the solver_callable class from the temp file
-            spec = importlib.util.spec_from_file_location(
-                "agent_scaffold_temp", temp_file
-            )
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-
-            # Find any function decorated with @solver
-            solver_callable = None
-            for name, obj in module.__dict__.items():
-                if hasattr(obj, "__solver__") and callable(obj):
-                    solver_callable = obj
-                    break
-
-            if solver_callable is None:
-                raise ValueError(
-                    "No function decorated with @solver found in the module"
-                )
-
-        except Exception as e:
-            print("Error during benchmark evaluation:", e)
-
-            # get traceback
-            import traceback
-
-            print(traceback.format_exc())
-
-            return None, temp_file
-
-        return solver_callable, temp_file
+        return solver_function, module_name

@@ -46,15 +46,10 @@ DEFAULT_PIP3_INSTALLS = [
 
 
 def generate_dockerfile(apt_get_installs: list[str], pip3_installs: list[str]) -> None:
-    """Generate a Dockerfile for CTF tasks.
-
-    Args:
-        apt_get_installs: List of apt-get packages to install
-        pip3_installs: List of pip3 packages to install
-    """
     current_dir = Path.cwd()
-    template_path = current_dir / "Dockerfile.template"
-    dockerfile_path = current_dir / "Dockerfile"
+
+    template_path = current_dir / "src" / "evals" / "ctf" / "Dockerfile.template"
+    dockerfile_path = current_dir / "src" / "evals" / "ctf" / "Dockerfile"
 
     with open(template_path, "r") as template_file:
         template_content = template_file.read()
