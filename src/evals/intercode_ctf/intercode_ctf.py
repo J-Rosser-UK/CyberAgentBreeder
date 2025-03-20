@@ -36,11 +36,12 @@ class IntercodeCTFBenchmark(Benchmark):
 
     def tasks(self, solvers) -> list[Task]:
         dataset = read_dataset(shuffle=self.shuffle)
+
         return [
             Task(
                 dataset=dataset,
-                name=solver(DEFAULT_TOOL_CONFIGS).__name__,
-                solver=solver(DEFAULT_TOOL_CONFIGS),
+                name=solver[0],
+                solver=solver[1](DEFAULT_TOOL_CONFIGS),
                 scorer=includes(),
                 sandbox=("docker", COMPOSE_FILE.as_posix()),
             )

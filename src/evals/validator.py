@@ -19,10 +19,12 @@ class Validator:
             shuffle=False,
         )
 
-    def validate(self, scaffolds_for_validation: list[Scaffold], log_d="logs"):
+    def validate(self, scaffolds_for_validation: list[Scaffold]):
         if len(scaffolds_for_validation) == 0:
             return
-        model_metrics = self.benchmark.evaluate(scaffolds_for_validation, log_d=log_d)
+        model_metrics = self.benchmark.evaluate(scaffolds_for_validation)
+
+        print(model_metrics)
 
         for model, task_metrics in model_metrics.items():
             for task, metrics in task_metrics.items():
@@ -35,12 +37,11 @@ class Validator:
                 print(f"  median:   {metrics['median']}")
 
                 for scaffold in scaffolds_for_validation:
-                    if str(scaffold.scaffold_id) == model.split("||")[1]:
-                        if task == self.benchmarks[self.args.benchmark].__name__:
-                            scaffold.update(
-                                scaffold_capability_ci_median=metrics["median"],
-                                scaffold_capability_ci_sample_size=self.args.n_evals,
-                                scaffold_capability_ci_lower=metrics["ci_lower"],
-                                scaffold_capability_ci_upper=metrics["ci_upper"],
-                                scaffold_capability_ci_confidence_level=0.95,
-                            )
+                    if task == scaffold.scaffold_name:
+                        scaffold.update(
+                            scaffold_capability_ci_median=metrics["median"],
+                            scaffold_capability_ci_sample_size=self.args.n_evals,
+                            scaffold_capability_ci_lower=metrics["ci_lower"],
+                            scaffold_capability_ci_upper=metrics["ci_upper"],
+                            scaffold_capability_ci_confidence_level=0.95,
+                        )

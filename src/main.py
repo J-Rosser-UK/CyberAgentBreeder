@@ -58,14 +58,20 @@ def main(args):
             # Generate a new batch of mutants
             asyncio.run(generator.run_generation(session))
 
+            print("Generation complete")
+
             scaffolds = (
                 session.query(Scaffold)
                 .filter_by(population_id=args.population_id)
                 .all()
             )
 
+            print([scaffold.scaffold_name for scaffold in scaffolds])
+
             # Recluster the population
             clusterer.cluster(scaffolds)
+
+            print("Clustering complete")
 
             # Only choose scaffolds which haven't been validated yet
             scaffolds_for_validation = (
@@ -75,8 +81,12 @@ def main(args):
                 )
                 .all()
             )
+            print("Scaffolds for validation:")
+            print([scaffold.scaffold_name for scaffold in scaffolds_for_validation])
 
             validator.validate(scaffolds_for_validation)
+
+            print("Validation complete")
             session.commit()
 
     return args.population_id  # Return the population ID for restarts
@@ -92,8 +102,8 @@ if __name__ == "__main__":
     parser.add_argument("--log_timestamp", type=str, default=log_timestamp_str)
     parser.add_argument("--random_seed", type=int, default=40)
     parser.add_argument("--n_generation", type=int, default=10)
-    parser.add_argument("--n_mutations", type=int, default=10)
-    parser.add_argument("--n_evals", type=int, default=5)
+    parser.add_argument("--n_mutations", type=int, default=3)
+    parser.add_argument("--n_evals", type=int, default=1)
     parser.add_argument("--debug_max", type=int, default=3)
     parser.add_argument("--model", type=str, default="openai/gpt-4o-mini")
     parser.add_argument("-p", "--population_id", type=str, default="None")

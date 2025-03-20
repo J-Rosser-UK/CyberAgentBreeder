@@ -59,7 +59,7 @@ class CustomBase(Base):
         Validates the value of a column against its expected type.
         """
         if isinstance(column_type, String):
-            if not isinstance(value, str):
+            if not isinstance(value, (str, type(None))):
                 raise Exception(
                     f"Invalid value for column '{column_name}'. Expected a string but got {type(value).__name__}."
                 )

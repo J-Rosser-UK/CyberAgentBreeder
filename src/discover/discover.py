@@ -31,16 +31,12 @@ class Discover:
         """
         self.args = args
 
-        self.population_id = self.args.population_id
-
         self.mutation_operators = multi_agent_scaffold_mutation_prompts
 
         self.batch_size = 1
         self.descriptor = Descriptor()
 
         self.validator = Validator(args)
-        self.base_prompt = None
-        self.base_prompt_response_format = None
 
         # Initialize CTF benchmark
         self.ctf_benchmark = IntercodeCTFBenchmark(args=args)
@@ -85,18 +81,14 @@ class Discover:
         parents = []
 
         for _ in range(self.args.n_mutations):
-            scaffold_1 = random.choice(elites(session, self.population_id)).to_dict()
-            scaffold_2 = random.choice(elites(session, self.population_id)).to_dict()
+            scaffold_1 = random.choice(
+                elites(session, self.args.population_id)
+            ).to_dict()
+            scaffold_2 = random.choice(
+                elites(session, self.args.population_id)
+            ).to_dict()
 
             parents.append((scaffold_1, scaffold_2))
-
-        # Load the prompt with examples from database
-        self.base_prompt = load_prompt_with_examples(session)
-        self.base_prompt_response_format = {
-            "thought": "Your explanation of the design choices, structure, and any important considerations for the scaffold.",
-            "name": "The snake-case name of the scaffold. E.g. react_and_plan",
-            "code": "The complete Python script for the new scaffold.",
-        }
 
         generation_timestamp = datetime.datetime.utcnow()
 
@@ -124,11 +116,10 @@ class Discover:
                     scaffold_reasoning=scaffold["scaffold_reasoning"],
                     scaffold_first_parent_id=scaffold["scaffold_first_parent_id"],
                     scaffold_second_parent_id=scaffold["scaffold_second_parent_id"],
-                    population=self.population_id,
+                    population_id=self.args.population_id,
                     generation_timestamp=generation_timestamp,
                     scaffold_benchmark=self.args.benchmark,
                 )
-                self.population_id.scaffolds.append(scaffold)
 
                 scaffold.update(scaffold_descriptor=self.descriptor.generate(scaffold))
 

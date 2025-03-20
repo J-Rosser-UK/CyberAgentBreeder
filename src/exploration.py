@@ -21,7 +21,7 @@ solvers = [
     cyber_recon_scaffold(DEFAULT_TOOL_CONFIGS),
 ]
 
-print(solvers[0], solvers[0].__name__)
+print(react_and_plan_agent.__name__, str(solvers[0]))
 
 tasks = [
     Task(

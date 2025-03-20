@@ -10,9 +10,9 @@ from evals import Benchmark
 from pathlib import Path
 import glob
 from base import elites
-import openai
+from openai import AsyncOpenAI
 
-client = openai.OpenAI()
+client = AsyncOpenAI()
 
 
 def load_prompt_with_examples(args, session):
@@ -221,7 +221,7 @@ class Evolve:
         try:
 
             output = await client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=messages,
             )
 
@@ -232,7 +232,7 @@ class Evolve:
                 re.search(r"<name>(.*?)</name>", response, re.DOTALL).group(1).strip()
             )
             # Clean up the scaffold to only allow numbers, letters, hyphens and underscores
-            scaffold_name = re.sub(r"[^A-Za-z0-9 \-\u2013\u2014]+", "", scaffold_name)
+            scaffold_name = re.sub(r"[^A-Za-z0-9_\-\u2013\u2014]+", "", scaffold_name)
 
             scaffold_code = (
                 re.search(r"<code>(.*?)</code>", response, re.DOTALL).group(1).strip()
@@ -250,7 +250,10 @@ class Evolve:
 
         except Exception as e:
             print("During LLM generate new solution:")
-            print(e)
+
+            import traceback
+
+            traceback.print_exc()
 
             return None
 

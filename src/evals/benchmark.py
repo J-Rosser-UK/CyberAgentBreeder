@@ -38,18 +38,28 @@ class AgentScaffoldException(Exception):
 
 class Benchmark(ABC):
 
-    def evaluate(self, scaffolds, log_d="logs"):
+    def evaluate(self, scaffolds):
 
-        solvers = [
-            self.extract_solver_functions(str(scaffold.scaffold_code))
-            for scaffold in scaffolds
-        ]
+        solvers = []
+
+        for scaffold in scaffolds:
+            try:
+                name = scaffold.scaffold_name
+                solver = self.extract_solver_functions(str(scaffold.scaffold_code))
+                solvers.append((name, solver))
+            except Exception as e:
+                print(
+                    f"Warning: Error extracting solver functions for {scaffold.scaffold_name}:"
+                )
+                import traceback
+
+                traceback.print_exc()
 
         results = eval(
             self.tasks(solvers),
             model=self.args.model,
             limit=self.args.n_evals,
-            log_dir=f"./src/{log_d}/{self.args.log_timestamp}/{self.__class__.__name__}-{str(scaffolds[0].population_id)}/logs",  # specify where logs are stored
+            log_dir=f"./src/logs/{self.args.log_timestamp}/{self.__class__.__name__}-{str(scaffolds[0].population_id)}/logs",  # specify where logs are stored
             log_format="json",  # choose log format ("eval" or "json")
             score=True,  # ensure scoring is enable
             max_tasks=500,
@@ -64,6 +74,8 @@ class Benchmark(ABC):
             # 1) Get the model name and task name
             model_name = str(getattr(res.eval, "model", ""))
             task_name = res.eval.task
+
+            print(model_name, task_name)
 
             # 2) Initialize defaults (or None) for each metric
             accuracy, ci_lower, ci_upper, median = None, None, None, None
@@ -140,4 +152,8 @@ class Benchmark(ABC):
             if hasattr(module, name):
                 solver_functions.append(getattr(module, name))
 
-        return solver_functions[-1]
+        output = solver_functions[-1]
+
+        assert isinstance(output, Callable)
+
+        return output
