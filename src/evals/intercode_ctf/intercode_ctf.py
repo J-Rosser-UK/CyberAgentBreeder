@@ -35,11 +35,10 @@ class IntercodeCTFBenchmark(Benchmark):
         generate_dockerfile(DEFAULT_APT_GET_INSTALLS, DEFAULT_PIP3_INSTALLS)
 
     def tasks(self, solvers) -> list[Task]:
-        dataset = read_dataset(shuffle=self.shuffle)
 
         return [
             Task(
-                dataset=dataset,
+                dataset=read_dataset(shuffle=self.shuffle),
                 name=solver[0],
                 solver=solver[1](DEFAULT_TOOL_CONFIGS),
                 scorer=includes(),

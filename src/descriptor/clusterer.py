@@ -54,13 +54,6 @@ class Clusterer:
         # Convert to numpy array
         embeddings = np.array(embeddings, dtype=np.float32)
 
-        # Perform hierarchical clustering
-        labels = self.clusterer.fit_predict(embeddings)
-
-        # Get unique labels (clusters)
-        unique_labels = np.unique(labels)
-        print("Number of unique clusters: ", len(unique_labels))
-
         # Example: if you want to handle small populations differently
         if len(embeddings) < 10:
             # Put each scaffold in its own cluster with a unique UUID
@@ -69,6 +62,13 @@ class Clusterer:
                 scaffold.update(cluster_id=unique_cluster_id)
 
         else:
+            # Perform hierarchical clustering
+            labels = self.clusterer.fit_predict(embeddings)
+
+            # Get unique labels (clusters)
+            unique_labels = np.unique(labels)
+            print("Number of unique clusters: ", len(unique_labels))
+
             # Create one Cluster object per unique label
             for label in unique_labels:
                 unique_cluster_id = str(uuid.uuid4())
@@ -77,5 +77,3 @@ class Clusterer:
                 for i, scaffold in enumerate(scaffolds):
                     if labels[i] == label:
                         scaffold.update(cluster_id=unique_cluster_id)
-
-        return labels

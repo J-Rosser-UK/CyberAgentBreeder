@@ -93,7 +93,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig(level=logging.WARNING)
 
     parser = argparse.ArgumentParser()
     current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -102,8 +102,9 @@ if __name__ == "__main__":
     parser.add_argument("--log_timestamp", type=str, default=log_timestamp_str)
     parser.add_argument("--random_seed", type=int, default=40)
     parser.add_argument("--n_generation", type=int, default=10)
-    parser.add_argument("--n_mutations", type=int, default=3)
-    parser.add_argument("--n_evals", type=int, default=1)
+    parser.add_argument("--n_mutations", type=int, default=10)
+    parser.add_argument("--n_evals", type=int, default=10)
+    parser.add_argument("--token_limit", type=int, default=100000)
     parser.add_argument("--debug_max", type=int, default=3)
     parser.add_argument("--model", type=str, default="openai/gpt-4o-mini")
     parser.add_argument("-p", "--population_id", type=str, default="None")

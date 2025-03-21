@@ -35,7 +35,7 @@ def load_prompt_with_examples(args, session):
                 + f"{scaffold.scaffold_reasoning}"
                 + "</reasoning>\n"
                 + "<name>"
-                + f"<{scaffold.scaffold_name}>"
+                + f"{scaffold.scaffold_name}"
                 + "</name>\n"
                 + "<code>"
                 + f"{scaffold.scaffold_code}"
@@ -46,6 +46,10 @@ def load_prompt_with_examples(args, session):
     # Replace the placeholder with actual examples
     example_section = "\n\n".join(example_scaffolds)
     prompt_content = prompt_content.replace("{{EXAMPLE_SCAFFOLDS}}", example_section)
+
+    # write to file
+    with open("prompt_with_examples.md", "w") as f:
+        f.write(prompt_content)
 
     return prompt_content
 
@@ -221,7 +225,7 @@ class Evolve:
         try:
 
             output = await client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=messages,
             )
 

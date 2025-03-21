@@ -56,6 +56,6 @@ class Descriptor:
         """
         text = scaffold.scaffold_name + ": " + "\n" + scaffold.scaffold_code
         response = self.client.embeddings.create(
-            input=text, model=self.model, dimensions=self.output_dim
+            input=text[:8191], model=self.model, dimensions=self.output_dim
         )
         return response.data[0].embedding

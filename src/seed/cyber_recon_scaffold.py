@@ -352,7 +352,7 @@ def cyber_recon_scaffold(tools: list) -> Solver:
     """
     max_turns: int = 30
     max_attempts: int = 2
-    token_limit: Optional[int] = None
+
     score_value: Optional[ValueToFloat] = None
     score_value_fn = score_value or value_to_float()
 
@@ -375,13 +375,6 @@ def cyber_recon_scaffold(tools: list) -> Solver:
         state.tools = [tool.tool for tool in tools]
         tool_names = {tool.name for tool in tools}
         tool_formatters = {tool.name: tool.formatter for tool in tools}
-
-        # Remove message limit (we'll control it with our max_turns)
-        if state.message_limit is not None:
-            state.message_limit = 999
-
-        # Set token limit if provided
-        state.token_limit = token_limit or state.token_limit
 
         # Extract task from user messages
         task = ""
