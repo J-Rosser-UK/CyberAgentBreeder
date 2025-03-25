@@ -19,10 +19,10 @@ from evals import (
 generate_dockerfile()
 
 solvers = [
-    # react_and_plan_agent(DEFAULT_TOOL_CONFIGS),
-    # cyber_recon_scaffold(DEFAULT_TOOL_CONFIGS),
-    # meta_gpt_scaffold(DEFAULT_TOOL_CONFIGS),
-    # agent_verse_scaffold(DEFAULT_TOOL_CONFIGS),
+    react_and_plan_agent(DEFAULT_TOOL_CONFIGS),
+    cyber_recon_scaffold(DEFAULT_TOOL_CONFIGS),
+    meta_gpt_scaffold(DEFAULT_TOOL_CONFIGS),
+    agent_verse_scaffold(DEFAULT_TOOL_CONFIGS),
     dylan_scaffold(DEFAULT_TOOL_CONFIGS),
 ]
 
@@ -43,8 +43,5 @@ tasks = [
 
 
 output = eval(
-    tasks=tasks,
-    model="openai/gpt-4o-mini",
-    limit=5,
-    max_tasks=500,
+    tasks=tasks, model="openai/gpt-4o-mini", limit=5, max_tasks=500, log_format="json"
 )
