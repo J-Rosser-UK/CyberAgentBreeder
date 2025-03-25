@@ -13,7 +13,7 @@ import sys
 # Add the src directory to the path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.discover.discover_inspect import DiscoverInspect
+from discover.discover import Discover
 from src.base import create_session
 
 logging.basicConfig(
@@ -80,7 +80,7 @@ async def main():
     session = create_session()
 
     # Initialize Discover Inspect
-    discover = DiscoverInspect(args)
+    discover = Discover(args)
 
     # Load code samples if specified
     code_samples = None

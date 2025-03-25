@@ -8,7 +8,7 @@ import asyncio
 from tqdm import tqdm
 from sqlalchemy.exc import SAWarning
 from discover import Discover
-from discover import DiscoverInspect
+from discover import Discover
 from descriptor import Clusterer
 from base import initialize_session, Scaffold, initialize_population_id
 from evals import Validator
@@ -54,7 +54,7 @@ def main(args):
 
         # Begin Bayesian Illumination...
         for _ in tqdm(range(args.n_generation), desc="Generations"):
-            discoverer = DiscoverInspect(args)
+            discoverer = Discover(args)
 
             discoverer.discover(session)
 
