@@ -63,7 +63,10 @@ class Benchmark(ABC):
             log_dir=f"./src/logs/{self.args.log_timestamp}/{self.__class__.__name__}-{str(scaffolds[0].population_id)}/logs",  # specify where logs are stored
             log_format="json",  # choose log format ("eval" or "json")
             score=True,  # ensure scoring is enable
-            max_tasks=500,
+            max_samples=self.args.max_samples,
+            max_tasks=self.args.max_tasks,
+            max_subprocesses=self.args.max_subprocesses,
+            max_sandboxes=self.args.max_sandboxes,
         )
 
         # 'results' is a list of EvalLog objects (usually one per task)

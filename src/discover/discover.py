@@ -99,7 +99,10 @@ class Discover:
             log_dir=f"./src/logs/{self.args.log_timestamp}/discover/{self.__class__.__name__}-{str(self.args.population_id)}/logs",  # specify where logs are stored
             log_format="json",  # choose log format ("eval" or "json")
             score=False,  # ensure scoring is enable
-            max_tasks=500,
+            max_samples=self.args.max_samples,
+            max_tasks=self.args.max_tasks,
+            max_subprocesses=self.args.max_subprocesses,
+            max_sandboxes=self.args.max_sandboxes,
         )
 
         for result in results:

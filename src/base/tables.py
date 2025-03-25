@@ -121,7 +121,15 @@ def _find_elite(scaffolds):
     If no scaffolds are associated with the cluster, returns None.
     """
     # Query the Scaffold table for the highest fitness scaffold in this cluster
-    elite = max(scaffolds, key=lambda s: s.scaffold_capability_ci_median, default=None)
+    elite = max(
+        scaffolds,
+        key=lambda s: (
+            s.scaffold_capability_ci_median
+            if s.scaffold_capability_ci_median is not None
+            else 0
+        ),
+        default=None,
+    )
 
     if not elite:
         raise ValueError("No elite found in cluster.")
