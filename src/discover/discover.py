@@ -8,6 +8,7 @@ import logging
 import datetime
 from tqdm import tqdm
 import re
+from pathlib import Path
 
 from base import Scaffold
 from descriptor import Descriptor
@@ -15,7 +16,7 @@ from evals import Validator
 from evals.intercode_ctf.intercode_ctf import IntercodeCTFBenchmark
 
 from discover.mutation_operators import multi_agent_scaffold_mutation_operators
-from .evolve import Evolve, load_prompt_with_examples
+
 from base import elites
 from evals.intercode_ctf.dataset import read_dataset
 
@@ -37,6 +38,45 @@ from inspect_ai.solver import Generate, Solver, TaskState, solver
 from inspect_ai.tool import Tool, ToolCall, ToolResult, bash, tool, python
 from inspect_ai import Task
 from inspect_ai import eval
+
+
+def load_prompt_with_examples(args, session):
+    """Load the prompt.md file and replace example scaffolds with actual examples from database."""
+    prompt_path = Path(__file__).parent / "prompt.md"
+
+    with open(prompt_path, "r") as f:
+        prompt_content = f.read()
+
+    # Get elite scaffolds from the database
+    elite_scaffolds = elites(session, args.population_id)
+
+    # Format each example scaffold
+    example_scaffolds = []
+    for i, scaffold in enumerate(elite_scaffolds):
+        if scaffold.scaffold_reasoning:  # Only include scaffolds with reasoning
+            example_scaffolds.append(
+                f"<example_scaffold_{i+1}>\n"
+                + "<reasoning>"
+                + f"{scaffold.scaffold_reasoning}"
+                + "</reasoning>\n"
+                + "<name>"
+                + f"{scaffold.scaffold_name}"
+                + "</name>\n"
+                + "<code>"
+                + f"{scaffold.scaffold_code}"
+                + "</code>\n"
+                + "</example_scaffold_{i+1}>"
+            )
+
+    # Replace the placeholder with actual examples
+    example_section = "\n\n".join(example_scaffolds)
+    prompt_content = prompt_content.replace("{{EXAMPLE_SCAFFOLDS}}", example_section)
+
+    # write to file
+    with open("prompt_with_examples.md", "w") as f:
+        f.write(prompt_content)
+
+    return prompt_content
 
 
 class Discover:
