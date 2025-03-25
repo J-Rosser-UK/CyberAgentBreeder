@@ -36,13 +36,19 @@ class IntercodeCTFBenchmark(Benchmark):
 
     def tasks(self, solvers) -> list[Task]:
 
-        return [
-            Task(
-                dataset=read_dataset(shuffle=self.shuffle),
-                name=solver[0],
-                solver=solver[1](DEFAULT_TOOL_CONFIGS),
-                scorer=includes(),
-                sandbox=("docker", COMPOSE_FILE.as_posix()),
-            )
-            for solver in solvers
-        ]
+        tasks = []
+        for solver in solvers:
+            try:
+                tasks.append(
+                    Task(
+                        dataset=read_dataset(shuffle=self.shuffle),
+                        name=solver[0],
+                        solver=solver[1](DEFAULT_TOOL_CONFIGS),
+                        scorer=includes(),
+                        sandbox=("docker", COMPOSE_FILE.as_posix()),
+                    )
+                )
+            except Exception as e:
+                print(f"Error creating task for {solver[0]}: {e}")
+                continue
+        return tasks

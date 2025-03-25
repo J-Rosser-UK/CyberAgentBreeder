@@ -28,9 +28,9 @@ class Scaffold(CustomBase):
         label="The second parent's unique identifier (UUID). This may be None if mutation rather than crossover.",
     )
 
-    scaffold_mutation_prompt = CustomColumn(
+    scaffold_mutation_operator = CustomColumn(
         String,
-        label="The prompt used to generate this scaffold.",
+        label="The mutation operator used to generate this scaffold.",
         default=None,
         nullable=True,
     )

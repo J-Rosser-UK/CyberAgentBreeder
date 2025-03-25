@@ -1,4 +1,4 @@
-multi_agent_scaffold_mutation_prompts = [
+multi_agent_scaffold_mutation_operators = [
     "Inside the scaffold, add a step which restates and elaborates on the inquiry before proceeding with a response.",
     "Inside the scaffold, add a step which reframes the question with additional context and detail before working out the answer.",
     "Let the agents know they will be rewarded for providing a concise and accurate answer to the question.",

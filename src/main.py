@@ -8,6 +8,7 @@ import asyncio
 from tqdm import tqdm
 from sqlalchemy.exc import SAWarning
 from discover import Discover
+from discover import DiscoverInspect
 from descriptor import Clusterer
 from base import initialize_session, Scaffold, initialize_population_id
 from evals import Validator
@@ -53,10 +54,9 @@ def main(args):
 
         # Begin Bayesian Illumination...
         for _ in tqdm(range(args.n_generation), desc="Generations"):
-            generator = Discover(args)
+            discoverer = DiscoverInspect(args)
 
-            # Generate a new batch of mutants
-            asyncio.run(generator.run_generation(session))
+            discoverer.discover(session)
 
             print("Generation complete")
 
@@ -89,6 +89,8 @@ def main(args):
             print("Validation complete")
             session.commit()
 
+            print("Generation complete")
+
     return args.population_id  # Return the population ID for restarts
 
 
@@ -106,7 +108,8 @@ if __name__ == "__main__":
     parser.add_argument("--n_evals", type=int, default=10)
     parser.add_argument("--token_limit", type=int, default=100000)
     parser.add_argument("--debug_max", type=int, default=3)
-    parser.add_argument("--model", type=str, default="openai/gpt-4o-mini")
+    parser.add_argument("--scaffold_model", type=str, default="openai/gpt-4o-mini")
+    parser.add_argument("--meta_agent_model", type=str, default="openai/gpt-4o")
     parser.add_argument("-p", "--population_id", type=str, default="None")
     parser.add_argument("--benchmark", type=str, default="intercode_ctf")
     parser.add_argument("--task_timeout", type=int, default=30 * 60)

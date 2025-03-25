@@ -57,7 +57,7 @@ class Benchmark(ABC):
 
         results = eval(
             self.tasks(solvers),
-            model=self.args.model,
+            model=self.args.scaffold_model,
             limit=self.args.n_evals,
             token_limit=self.args.token_limit,
             log_dir=f"./src/logs/{self.args.log_timestamp}/{self.__class__.__name__}-{str(scaffolds[0].population_id)}/logs",  # specify where logs are stored

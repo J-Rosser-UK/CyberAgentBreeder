@@ -13,7 +13,7 @@ from descriptor import Descriptor
 from evals import Validator
 from evals.intercode_ctf.intercode_ctf import IntercodeCTFBenchmark
 
-from discover.mutation_prompts import multi_agent_scaffold_mutation_prompts
+from discover.mutation_operators import multi_agent_scaffold_mutation_operators
 from .evolve import Evolve, load_prompt_with_examples
 from base import elites
 
@@ -31,7 +31,7 @@ class Discover:
         """
         self.args = args
 
-        self.mutation_operators = multi_agent_scaffold_mutation_prompts
+        self.mutation_operators = multi_agent_scaffold_mutation_operators
 
         self.batch_size = 1
         self.descriptor = Descriptor()
