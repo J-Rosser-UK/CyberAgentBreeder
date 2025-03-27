@@ -330,7 +330,7 @@ class Discover:
                 else:
                     output_message_content = str(output.message.content)
 
-                print("OUTPUT", output_message_content)
+                print("OUTPUT", output_message_content[:100])
 
                 complete_output += output_message_content
 
@@ -342,6 +342,8 @@ class Discover:
                 ):
                     print("COMPLETE", m)
                     break
+
+                state.messages.append(ChatMessageUser(content="Continue"))
 
             state.output.completion = complete_output
 
