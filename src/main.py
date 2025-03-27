@@ -24,9 +24,11 @@ def main(args):
     random.seed(args.random_seed)
 
     # Initialize args.population_id only if it doesn't exist
-    if not args.population_id:
+    if not args.population_id or args.population_id == "None":
         args.population_id = initialize_population_id(args)
         print(f"Population ID: {args.population_id}")
+
+    assert args.population_id is not None and args.population_id != "None"
 
     for session in initialize_session():
         validator = Validator(args)
@@ -46,9 +48,11 @@ def main(args):
                 population_id=args.population_id, scaffold_capability_ci_median=None
             )
             .order_by(Scaffold.scaffold_timestamp.desc())
-            .all()[:10]
+            .all()
         )
         validator.validate(scaffolds_for_validation)
+
+        session.commit()
 
         print(f"Reloaded population ID: {args.population_id}")
 
@@ -104,14 +108,12 @@ if __name__ == "__main__":
     parser.add_argument("--log_timestamp", type=str, default=log_timestamp_str)
     parser.add_argument("--random_seed", type=int, default=40)
     parser.add_argument("--n_generation", type=int, default=10)
-    parser.add_argument("--n_mutations", type=int, default=10)
-    parser.add_argument("--n_evals", type=int, default=1)
+    parser.add_argument("--n_mutations", type=int, default=20)
+    parser.add_argument("--n_evals", type=int, default=20)
     parser.add_argument("--token_limit", type=int, default=100000)
     parser.add_argument("--debug_max", type=int, default=3)
     parser.add_argument("--scaffold_model", type=str, default="openai/gpt-4o-mini")
-    parser.add_argument(
-        "--meta_agent_model", type=str, default="anthropic/claude-3-7-sonnet-20250219"
-    )
+    parser.add_argument("--meta_agent_model", type=str, default="openai/gpt-4o-mini")
     parser.add_argument("-p", "--population_id", type=str, default="None")
     parser.add_argument("--benchmark", type=str, default="intercode_ctf")
     parser.add_argument("--task_timeout", type=int, default=30 * 60)

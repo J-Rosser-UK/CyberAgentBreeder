@@ -49,11 +49,11 @@ class Benchmark(ABC):
                 solvers.append((name, solver))
             except Exception as e:
                 print(
-                    f"Warning: Error extracting solver functions for {scaffold.scaffold_name}:"
+                    f"Warning: Error extracting solver functions for {scaffold.scaffold_name}: {e}"
                 )
-                import traceback
+                # import traceback
 
-                traceback.print_exc()
+                # traceback.print_exc()
 
         results = eval(
             self.tasks(solvers),
@@ -63,6 +63,7 @@ class Benchmark(ABC):
             log_dir=f"./src/logs/{self.args.log_timestamp}/{self.__class__.__name__}-{str(scaffolds[0].population_id)}/logs",  # specify where logs are stored
             log_format="json",  # choose log format ("eval" or "json")
             score=True,  # ensure scoring is enable
+            fail_on_error=False,
             max_samples=self.args.max_samples,
             max_tasks=self.args.max_tasks,
             max_subprocesses=self.args.max_subprocesses,

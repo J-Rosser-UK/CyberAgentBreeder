@@ -40,8 +40,6 @@ class Clusterer:
             np.ndarray: An array of cluster labels for the multi-agent scaffolds in the population.
         """
 
-        session = object_session(scaffolds[0])
-
         # Extract embeddings from population scaffolds
         embeddings = [scaffold.scaffold_descriptor for scaffold in scaffolds]
 

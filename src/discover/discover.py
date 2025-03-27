@@ -73,8 +73,8 @@ def load_prompt_with_examples(args, session):
     prompt_content = prompt_content.replace("{{EXAMPLE_SCAFFOLDS}}", example_section)
 
     # write to file
-    with open("prompt_with_examples.md", "w") as f:
-        f.write(prompt_content)
+    # with open("prompt_with_examples.md", "w") as f:
+    #     f.write(prompt_content)
 
     return prompt_content
 
@@ -197,14 +197,13 @@ class Discover:
                 scaffold.update(scaffold_descriptor=self.descriptor.generate(scaffold))
 
             except Exception as e:
-                print("During LLM generate new solution:")
+                print(f"During LLM generate new solution: {e}")
 
-                import traceback
+                # import traceback
 
-                traceback.print_exc()
+                # traceback.print_exc()
 
                 return None
-            print(sample.output.completion)
 
         return results
 

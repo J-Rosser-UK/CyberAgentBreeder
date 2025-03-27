@@ -26,22 +26,29 @@ class Validator:
 
         print(model_metrics)
 
-        for model, task_metrics in model_metrics.items():
-            for task, metrics in task_metrics.items():
+        for scaffold in scaffolds_for_validation:
+            scaffold.update(
+                scaffold_capability_ci_median=0.0,
+                scaffold_capability_ci_sample_size=self.args.n_evals,
+                scaffold_capability_ci_lower=0.0,
+                scaffold_capability_ci_upper=0.0,
+                scaffold_capability_ci_confidence_level=0.95,
+            )
 
-                print(f"Model: {model}")
-                print(f"Task: {task}")
-                print(f"  accuracy: {metrics['accuracy']}")
-                print(f"  ci_lower: {metrics['ci_lower']}")
-                print(f"  ci_upper: {metrics['ci_upper']}")
-                print(f"  median:   {metrics['median']}")
+            for model, task_metrics in model_metrics.items():
+                for task, metrics in task_metrics.items():
 
-                for scaffold in scaffolds_for_validation:
+                    print(f"Model: {model}")
+                    print(f"Task: {task}")
+                    print(f"  accuracy: {metrics['accuracy']}")
+                    print(f"  ci_lower: {metrics['ci_lower']}")
+                    print(f"  ci_upper: {metrics['ci_upper']}")
+                    print(f"  median:   {metrics['median']}")
+
                     if task == scaffold.scaffold_name:
-                        scaffold.update(
-                            scaffold_capability_ci_median=metrics["median"],
-                            scaffold_capability_ci_sample_size=self.args.n_evals,
-                            scaffold_capability_ci_lower=metrics["ci_lower"],
-                            scaffold_capability_ci_upper=metrics["ci_upper"],
-                            scaffold_capability_ci_confidence_level=0.95,
-                        )
+                        if metrics["median"] is not None:
+                            scaffold.update(
+                                scaffold_capability_ci_median=metrics["median"],
+                                scaffold_capability_ci_lower=metrics["ci_lower"],
+                                scaffold_capability_ci_upper=metrics["ci_upper"],
+                            )

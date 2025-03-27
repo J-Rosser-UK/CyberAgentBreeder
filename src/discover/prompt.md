@@ -492,7 +492,9 @@ The snake-case name of the scaffold. E.g. react_and_plan
 </name>
 
 <code>
-The complete Python script for the new scaffold. Ensure proper indentation and include comments where necessary for clarity.
+# Your complete Python script goes here
+# Ensure proper indentation and include comments where necessary for clarity
+# Do not use ``` or ```python within these tags
 </code>
 
 Remember, the code should be dry, well-structured, and designed to be used as a building block for future development. Prioritize clarity and reusability in your design.
