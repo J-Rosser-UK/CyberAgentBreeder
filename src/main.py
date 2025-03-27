@@ -106,7 +106,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_generation", type=int, default=10)    # number of generations (there are inbuilt restarts so no probs there if we want to keep running longer)
     parser.add_argument("--n_mutations", type=int, default=20)    # number of new scaffolds created each generation (there is no debugging so i would expect lots to fail, this should give us 10 successes!
     parser.add_argument("--n_evals", type=int, default=100)    # number of inspect samples for evals
-    parser.add_argument("--token_limit", type=int, default=100000)
+    parser.add_argument("--token_limit", type=int, default=250_000)
     parser.add_argument("--debug_max", type=int, default=3)    # doesn't do anything, here for when i reimplement debugging
     parser.add_argument("--scaffold_model", type=str, default="openai/gpt-4o-mini")
     parser.add_argument(
