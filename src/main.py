@@ -108,16 +108,20 @@ if __name__ == "__main__":
     parser.add_argument("--log_timestamp", type=str, default=log_timestamp_str)
     parser.add_argument("--random_seed", type=int, default=40)
     parser.add_argument("--n_generation", type=int, default=10)
-    parser.add_argument("--n_mutations", type=int, default=10)
+    parser.add_argument("--n_mutations", type=int, default=1)
     parser.add_argument("--n_evals", type=int, default=1)
     parser.add_argument("--token_limit", type=int, default=50000)
     parser.add_argument("--debug_max", type=int, default=3)
     parser.add_argument("--scaffold_model", type=str, default="openai/gpt-4o-mini")
-    parser.add_argument("--meta_agent_model", type=str, default="anthropic/claude-3-7-sonnet-20250219")
+    parser.add_argument(
+        "--meta_agent_model",
+        type=str,
+        default="anthropic/claude-3-7-sonnet-20250219",  # "anthropic/claude-3-7-sonnet-20250219"  "openai/gpt-4o-mini"
+    )
     parser.add_argument("-p", "--population_id", type=str, default="None")
     parser.add_argument("--benchmark", type=str, default="intercode_ctf")
     parser.add_argument("--task_timeout", type=int, default=30 * 60)
-    parser.add_argument("--max_tokens", type=int, default=8192)
+    parser.add_argument("--max_tokens", type=int, default=1000)
 
     # For k8s
     parser.add_argument("--max_samples", type=int, default=100)

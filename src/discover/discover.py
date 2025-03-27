@@ -303,6 +303,8 @@ class Discover:
                 },
             ]
 
+        max_continues = 20
+
         async def solve(state: TaskState, generate: Generate) -> TaskState:
 
             state.metadata["parent_1"] = scaffold_1.get("scaffold_id")
@@ -316,12 +318,32 @@ class Discover:
             state.messages.append(ChatMessageUser(content=messages[0]["content"]))
 
             model = get_model()
+            m = 0
+            complete_output: str = ""
+            for m in range(max_continues):
+                print("CONTINUE", m, complete_output)
 
-            output = await model.generate(input=state.messages, cache=False)
+                output = await model.generate(input=state.messages, cache=False)
 
-            state.messages.append(ChatMessageAssistant(content=output.message.content))
+                if isinstance(output.message.content, list):
+                    output_message_content = str(output.message.content[0].text)
+                else:
+                    output_message_content = str(output.message.content)
 
-            state.output.completion = output.message.content
+                print("OUTPUT", output_message_content)
+
+                complete_output += output_message_content
+
+                state.messages.append(output.message)
+
+                if all(
+                    tag in complete_output
+                    for tag in ["</code>", "</reasoning>", "</name>"]
+                ):
+                    print("COMPLETE", m)
+                    break
+
+            state.output.completion = complete_output
 
             print("COMPLETION", state.output.completion)
 
