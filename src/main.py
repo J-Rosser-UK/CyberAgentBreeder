@@ -103,17 +103,17 @@ if __name__ == "__main__":
     parser.add_argument("--current_dir", type=str, default=current_directory)
     parser.add_argument("--log_timestamp", type=str, default=log_timestamp_str)
     parser.add_argument("--random_seed", type=int, default=40)
-    parser.add_argument("--n_generation", type=int, default=10)
-    parser.add_argument("--n_mutations", type=int, default=10)
-    parser.add_argument("--n_evals", type=int, default=1)
+    parser.add_argument("--n_generation", type=int, default=10)    # number of generations (there are inbuilt restarts so no probs there if we want to keep running longer)
+    parser.add_argument("--n_mutations", type=int, default=20)    # number of new scaffolds created each generation (there is no debugging so i would expect lots to fail, this should give us 10 successes!
+    parser.add_argument("--n_evals", type=int, default=100)    # number of inspect samples for evals
     parser.add_argument("--token_limit", type=int, default=100000)
-    parser.add_argument("--debug_max", type=int, default=3)
+    parser.add_argument("--debug_max", type=int, default=3)    # doesn't do anything, here for when i reimplement debugging
     parser.add_argument("--scaffold_model", type=str, default="openai/gpt-4o-mini")
     parser.add_argument(
         "--meta_agent_model", type=str, default="anthropic/claude-3-7-sonnet-20250219"
     )
-    parser.add_argument("-p", "--population_id", type=str, default="None")
-    parser.add_argument("--benchmark", type=str, default="intercode_ctf")
+    parser.add_argument("-p", "--population_id", type=str, default="None")    # set this if you want to pick backup where you left off
+    parser.add_argument("--benchmark", type=str, default="intercode_ctf")	# replace with "cybench" for those runs
     parser.add_argument("--task_timeout", type=int, default=30 * 60)
 
     # For k8s
