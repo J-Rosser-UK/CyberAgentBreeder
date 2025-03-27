@@ -143,6 +143,8 @@ class Discover:
             max_tasks=self.args.max_tasks,
             max_subprocesses=self.args.max_subprocesses,
             max_sandboxes=self.args.max_sandboxes,
+            max_connections=self.args.max_sandboxes,
+            max_tokens=self.args.max_tokens,
         )
 
         for result in results:
@@ -170,6 +172,9 @@ class Discover:
                     .group(1)
                     .strip()
                 )
+                if scaffold_code is None:
+                    continue
+
                 scaffold_reasoning = (
                     re.search(r"<reasoning>(.*?)</reasoning>", response, re.DOTALL)
                     .group(1)
