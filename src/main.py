@@ -118,9 +118,9 @@ if __name__ == "__main__":
 
     # For k8s
     parser.add_argument("--max_samples", type=int, default=100)
-    parser.add_argument("--max_tasks", type=int, default=500)
-    parser.add_argument("--max_subprocesses", type=int, default=100000)
-    parser.add_argument("--max_sandboxes", type=int, default=10)
+    parser.add_argument("--max_tasks", type=int, default=100)
+    parser.add_argument("--max_subprocesses", type=int, default=100)
+    parser.add_argument("--max_sandboxes", type=int, default=100)
 
     args = parser.parse_args()
 
