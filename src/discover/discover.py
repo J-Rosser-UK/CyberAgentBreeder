@@ -9,7 +9,7 @@ import datetime
 from tqdm import tqdm
 import re
 from pathlib import Path
-
+from textwrap import dedent
 from base import Scaffold
 from descriptor import Descriptor
 from evals import Validator
@@ -208,8 +208,6 @@ class Discover:
 
                 # traceback.print_exc()
 
-                return None
-
         return results
 
     def tasks(self, parents):
@@ -303,7 +301,7 @@ class Discover:
                 },
             ]
 
-        max_continues = 20
+        max_continues = 3
 
         async def solve(state: TaskState, generate: Generate) -> TaskState:
 
@@ -321,7 +319,7 @@ class Discover:
             m = 0
             complete_output: str = ""
             for m in range(max_continues):
-                print("CONTINUE", m, complete_output)
+                print("CONTINUE", m)
 
                 output = await model.generate(input=state.messages, cache=False)
 
@@ -330,7 +328,12 @@ class Discover:
                 else:
                     output_message_content = str(output.message.content)
 
-                print("OUTPUT", output_message_content[:100])
+                print(
+                    "OUTPUT",
+                    output_message_content[:100],
+                    "...",
+                    output_message_content[-100:],
+                )
 
                 complete_output += output_message_content
 
@@ -343,7 +346,20 @@ class Discover:
                     print("COMPLETE", m)
                     break
 
-                state.messages.append(ChatMessageUser(content="Continue"))
+                state.messages.append(
+                    ChatMessageUser(
+                        content=dedent(
+                            f"""
+Please continue the response where it left off.
+
+If the partial response ended in the middle of a section (e.g., <reasoning>, <name>, or <code>), continue that section. If a section was completed, move on to the next logical section based on the original instructions.
+
+Output your continuation without any preamble or explanation. Begin writing as if you were the original author, picking up mid-sentence, mid-paragraph, or mid-line of code if necessary.
+
+It is crucial that your continuation flows seamlessly from the partial response, allowing the two parts to be joined together without any visible break or repetition. Begin your continuation now:"""
+                        ).strip()
+                    )
+                )
 
             state.output.completion = complete_output
 
