@@ -112,6 +112,14 @@ def elites(session, population_id) -> list[Scaffold]:
     for cluster_scaffolds in clusters.values():
         elites.append(_find_elite(cluster_scaffolds))
 
+    # Sort elites by scaffold_capability_ci_median so that the highest median is first
+    elites.sort(key=lambda x: x.scaffold_capability_ci_median, reverse=True)
+
+    assert (
+        elites[0].scaffold_capability_ci_median
+        >= elites[-1].scaffold_capability_ci_median
+    )
+
     return elites
 
 

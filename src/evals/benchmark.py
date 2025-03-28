@@ -25,6 +25,7 @@ def register_benchmark(name):
 
     def decorator(cls):
         benchmark_registry[name] = cls
+
         return cls
 
     return decorator
@@ -60,7 +61,7 @@ class Benchmark(ABC):
             model=self.args.scaffold_model,
             limit=self.args.n_evals,
             token_limit=self.args.token_limit,
-            log_dir=f"./src/logs/{self.args.log_timestamp}/{self.__class__.__name__}-{str(scaffolds[0].population_id)}/logs",  # specify where logs are stored
+            log_dir=f"./src/logs/{self.args.log_timestamp}/evals/{self.__class__.__name__}-{str(scaffolds[0].population_id)}/logs",  # specify where logs are stored
             log_format="json",  # choose log format ("eval" or "json")
             score=True,  # ensure scoring is enable
             fail_on_error=False,
@@ -68,7 +69,7 @@ class Benchmark(ABC):
             max_tasks=self.args.max_tasks,
             max_subprocesses=self.args.max_subprocesses,
             max_sandboxes=self.args.max_sandboxes,
-            max_connections=self.args.max_sandboxes,
+            max_connections=self.args.max_openai_connections,
         )
 
         # 'results' is a list of EvalLog objects (usually one per task)

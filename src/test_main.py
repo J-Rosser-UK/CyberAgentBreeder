@@ -9,8 +9,6 @@ from seed.agent_verse_scaffold import agent_verse_scaffold
 from seed.dylan_scaffold import dylan_scaffold
 
 
-from inspect_evals.cybench import cybench
-
 from evals import (
     read_dataset,
     COMPOSE_FILE,

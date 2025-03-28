@@ -38,7 +38,8 @@ def filter_dataset_by_variant(dataset: Dataset, variants: set[str]) -> Dataset:
     """
     return dataset.filter(
         # Check that metadata is not None to satisfy mypy.
-        lambda x: x.metadata is not None and x.metadata["variant"] in variants
+        lambda x: x.metadata is not None
+        and x.metadata["variant"] in variants
     )
 
 

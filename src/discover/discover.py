@@ -48,7 +48,9 @@ def load_prompt_with_examples(args, session):
         prompt_content = f.read()
 
     # Get elite scaffolds from the database
-    elite_scaffolds = elites(session, args.population_id)
+    elite_scaffolds = elites(session, args.population_id)[0:5][
+        ::-1
+    ]  # Only use the top 5 elites and reverse them so that the highest median is last
 
     # Format each example scaffold
     example_scaffolds = []
@@ -143,7 +145,7 @@ class Discover:
             max_tasks=self.args.max_tasks,
             max_subprocesses=self.args.max_subprocesses,
             max_sandboxes=self.args.max_sandboxes,
-            max_connections=self.args.max_sandboxes,
+            max_connections=self.args.max_anthropic_connections,
             max_tokens=self.args.max_tokens,
         )
 
@@ -183,8 +185,9 @@ class Discover:
 
                 # Validate that the scaffold code includes the @solver decorator
                 if "@solver" not in scaffold_code:
-                    print("Error: Generated scaffold code missing @solver decorator")
-                    return None
+                    raise Exception(
+                        "Error: Generated scaffold code missing @solver decorator"
+                    )
 
                 scaffold = Scaffold(
                     session=session,
@@ -204,9 +207,9 @@ class Discover:
             except Exception as e:
                 print(f"During LLM generate new solution: {e}")
 
-                # import traceback
+                import traceback
 
-                # traceback.print_exc()
+                traceback.print_exc()
 
         return results
 
@@ -352,11 +355,11 @@ class Discover:
                             f"""
 Please continue the response where it left off.
 
-If the partial response ended in the middle of a section (e.g., <reasoning>, <name>, or <code>), continue that section. If a section was completed, move on to the next logical section based on the original instructions.
+If the partial response ended in the middle of a section (e.g., <reasoning>, <name>, or <code>), continue that section and include the closing tag (e.g., </reasoning>, </name>, or </code>). If a section was completed (indicated by the closing tag), move on to the next logical section based on the original instructions.
 
 Output your continuation without any preamble or explanation. Begin writing as if you were the original author, picking up mid-sentence, mid-paragraph, or mid-line of code if necessary.
 
-It is crucial that your continuation flows seamlessly from the partial response, allowing the two parts to be joined together without any visible break or repetition. Begin your continuation now:"""
+It is crucial that your continuation flows seamlessly from the partial response, allowing the two parts to be joined together without any visible break or repetition. It is also crucial that all sections are wrapped in the appropriate tags. Begin your continuation now:"""
                         ).strip()
                     )
                 )
