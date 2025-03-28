@@ -6,6 +6,7 @@
 *.sql
 *logs/
 logs/
+*cybench/
 *src/logs/
 *src.logs/
 *logs
