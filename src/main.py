@@ -108,9 +108,9 @@ if __name__ == "__main__":
     parser.add_argument("--log_timestamp", type=str, default=log_timestamp_str)
     parser.add_argument("--random_seed", type=int, default=40)
     parser.add_argument("--n_generation", type=int, default=10)
-    parser.add_argument("--n_mutations", type=int, default=20)
-    parser.add_argument("--n_evals", type=int, default=20)
-    parser.add_argument("--token_limit", type=int, default=50000)
+    parser.add_argument("--n_mutations", type=int, default=30)
+    parser.add_argument("--n_evals", type=int, default=100)
+    parser.add_argument("--token_limit", type=int, default=250000)
     parser.add_argument("--debug_max", type=int, default=3)
     parser.add_argument("--scaffold_model", type=str, default="openai/gpt-4o-mini")
     parser.add_argument(
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_samples", type=int, default=100)
     parser.add_argument("--max_tasks", type=int, default=100)
     parser.add_argument("--max_subprocesses", type=int, default=100)
-    parser.add_argument("--max_sandboxes", type=int, default=5)
+    parser.add_argument("--max_sandboxes", type=int, default=100)
     parser.add_argument("--max_openai_connections", type=int, default=100)
     parser.add_argument("--max_anthropic_connections", type=int, default=100)
 
