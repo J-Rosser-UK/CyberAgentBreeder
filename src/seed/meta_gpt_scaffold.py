@@ -897,7 +897,7 @@ def meta_gpt_scaffold(tools) -> Solver:
     with specialized agents working together.
     """
     max_turns: int = 25
-    max_attempts: int = 2
+    max_attempts: int = 100
     phase_recon_limit: int = 8  # Max turns to spend in reconnaissance phase
     phase_exploit_limit: int = 8  # Max turns to spend in exploitation phase
 

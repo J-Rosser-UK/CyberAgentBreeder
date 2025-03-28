@@ -473,7 +473,7 @@ def dylan_scaffold(
     agent_configs: List[AgentConfig] = DEFAULT_AGENT_CONFIGS,
     max_team_size: int = 3,
     max_turns: int = 20,
-    max_attempts: int = 1,
+    max_attempts: int = 100,
     optimization_turns: int = 5,
 ) -> Solver:
     """
