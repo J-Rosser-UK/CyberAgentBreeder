@@ -251,7 +251,7 @@ class TurnHistory:
 
 @solver
 def react_and_plan_agent(tools) -> Solver:
-    max_attempts: int = 1  # inf
+    max_attempts: int = 100
     max_turns: int = 30
     plan_at_turn: int = 12
 

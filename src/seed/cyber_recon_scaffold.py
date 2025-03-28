@@ -351,7 +351,7 @@ def cyber_recon_scaffold(tools: list) -> Solver:
     focusing on efficient information gathering before attempting solutions.
     """
     max_turns: int = 30
-    max_attempts: int = 2
+    max_attempts: int = 100
 
     score_value: Optional[ValueToFloat] = None
     score_value_fn = score_value or value_to_float()
