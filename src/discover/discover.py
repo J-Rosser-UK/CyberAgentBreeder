@@ -235,6 +235,7 @@ class Discover:
                 name=f"discover-{i}",
                 solver=solver,
                 scorer=includes(),
+                time_limit=self.args.time_limit,
             )
             for i, solver in enumerate(solvers)
         ]

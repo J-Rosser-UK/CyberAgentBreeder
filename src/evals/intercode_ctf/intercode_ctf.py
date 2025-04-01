@@ -48,6 +48,7 @@ class IntercodeCTFBenchmark(Benchmark):
                         solver=solver[1](DEFAULT_TOOL_CONFIGS),
                         scorer=self.includes(),
                         sandbox=("docker", COMPOSE_FILE.as_posix()),
+                        time_limit=self.args.time_limit,
                     )
                 )
             except Exception as e:

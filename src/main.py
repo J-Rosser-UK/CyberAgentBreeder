@@ -120,7 +120,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("-p", "--population_id", type=str, default="None")
     parser.add_argument("--benchmark", type=str, default="intercode_ctf")
-    parser.add_argument("--task_timeout", type=int, default=30 * 60)
+    parser.add_argument("--time_limit", type=int, default=30 * 60)  # 30 minutes
     parser.add_argument("--max_tokens", type=int, default=8000)
 
     # For k8s

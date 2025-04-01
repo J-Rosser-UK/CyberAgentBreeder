@@ -70,6 +70,7 @@ class Benchmark(ABC):
             max_subprocesses=self.args.max_subprocesses,
             max_sandboxes=self.args.max_sandboxes,
             max_connections=self.args.max_openai_connections,
+            log_buffer=1,
         )
 
         # 'results' is a list of EvalLog objects (usually one per task)
