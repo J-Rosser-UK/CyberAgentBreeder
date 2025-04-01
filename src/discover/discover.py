@@ -14,7 +14,7 @@ from base import Scaffold
 from descriptor import Descriptor
 from evals import Validator
 from evals.intercode_ctf.intercode_ctf import IntercodeCTFBenchmark
-
+from evals.benchmark import Benchmark
 from discover.mutation_operators import multi_agent_scaffold_mutation_operators
 
 from base import elites
@@ -364,6 +364,41 @@ It is crucial that your continuation flows seamlessly from the partial response,
                         ).strip()
                     )
                 )
+
+            for _ in range(3):
+
+                try:
+                    scaffold_code = (
+                        re.search(r"<code>(.*?)</code>", complete_output, re.DOTALL)
+                        .group(1)
+                        .strip()
+                    )
+                    solver_fn = Benchmark.extract_solver_functions(scaffold_code)
+                    if solver_fn:
+                        output = solver_fn(state, generate)
+                        break
+                except Exception as e:
+                    import traceback
+
+                    complete_traceback = traceback.format_exc()
+
+                    if complete_traceback:
+                        state.messages.append(
+                            ChatMessageUser(
+                                content=dedent(
+                                    f"""
+        The scaffold code has errors. Please fix the following issues and provide a new version between <code> tags:
+
+        {complete_traceback}
+
+        Ensure your response maintains the same overall structure but fixes these errors."""
+                                ).strip()
+                            )
+                        )
+                        # Reset complete_output to only keep non-code sections
+                        complete_output = re.sub(
+                            r"<code>.*?</code>", "", complete_output, flags=re.DOTALL
+                        )
 
             state.output.completion = complete_output
 

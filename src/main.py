@@ -62,7 +62,7 @@ def main(args):
 
             discoverer.discover(session)
 
-            print("Generation complete")
+            print(f"Generation {_ + 1} complete")
 
             scaffolds = (
                 session.query(Scaffold)
@@ -93,7 +93,7 @@ def main(args):
             print("Validation complete")
             session.commit()
 
-            print("Generation complete")
+            print(f"Generation {_ + 1} complete")
 
     return args.population_id  # Return the population ID for restarts
 
