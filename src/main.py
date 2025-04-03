@@ -128,7 +128,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_tasks", type=int, default=5)
     parser.add_argument("--max_subprocesses", type=int, default=5)
     parser.add_argument("--max_sandboxes", type=int, default=5)
-    parser.add_argument("--max_openai_connections", type=int, default=5)
+    parser.add_argument("--max_openai_connections", type=int, default=100)
     parser.add_argument("--max_anthropic_connections", type=int, default=5)
 
     args = parser.parse_args()
