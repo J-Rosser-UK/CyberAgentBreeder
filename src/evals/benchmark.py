@@ -161,7 +161,7 @@ class Benchmark(ABC):
             trace = traceback.format_exc()
             raise Exception(
                 dedent(
-                    f"""Error extracting solver functions for {code_string}: {trace}. \n
+                    f"""Error extracting solver functions from scaffold code. \n
                 This is the code that was used to extract the solver functions, please ensure your code is in such a format that it would be correctly extracted: 
 <solver_extraction_code>
     @staticmethod
@@ -206,7 +206,7 @@ class Benchmark(ABC):
 
             trace = traceback.format_exc()
             raise Exception(
-                dedent(f"Error extracting solver functions for {code_string}: {trace}.").strip()
+                dedent(f"Error extracting solver functions from scaffold code.").strip()
             )
 
         
