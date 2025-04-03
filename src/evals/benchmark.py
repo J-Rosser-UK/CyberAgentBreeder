@@ -1,5 +1,5 @@
 from abc import ABC
-
+from textwrap import dedent
 from inspect_ai import Task
 from inspect_ai.scorer import includes
 from inspect_ai._eval.eval import eval
@@ -31,12 +31,6 @@ def register_benchmark(name):
     return decorator
 
 
-class AgentScaffoldException(Exception):
-    """Custom exception for errors in the agent scaffold."""
-
-    pass
-
-
 class Benchmark(ABC):
 
     def evaluate(self, scaffolds):
@@ -52,9 +46,6 @@ class Benchmark(ABC):
                 print(
                     f"Warning: Error extracting solver functions for {scaffold.scaffold_name}: {e}"
                 )
-                # import traceback
-
-                # traceback.print_exc()
 
         results = eval(
             self.tasks(solvers),
@@ -130,38 +121,100 @@ class Benchmark(ABC):
         Returns:
             list: A list of callable solver functions that are decorated with @solver
         """
-        # Create a temporary module to execute the code
-        module = ModuleType(module_name)
-        sys.modules[module_name] = module
+        try:
+            # Create a temporary module to execute the code
+            module = ModuleType(module_name)
+            sys.modules[module_name] = module
 
-        # Execute the code string in the context of the module
-        exec(code_string, module.__dict__)
+            # Execute the code string in the context of the module
+            exec(code_string, module.__dict__)
 
-        # Parse the code string to find solver-decorated function names
-        tree = ast.parse(code_string)
-        solver_function_names = []
+            # Parse the code string to find solver-decorated function names
+            tree = ast.parse(code_string)
+            solver_function_names = []
 
-        # Find all solver-decorated functions
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
-                if node.decorator_list:
-                    for decorator in node.decorator_list:
-                        if (
-                            isinstance(decorator, ast.Name) and decorator.id == "solver"
-                        ) or (
-                            isinstance(decorator, ast.Attribute)
-                            and decorator.attr == "solver"
-                        ):
-                            solver_function_names.append(node.name)
+            # Find all solver-decorated functions
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef):
+                    if node.decorator_list:
+                        for decorator in node.decorator_list:
+                            if (
+                                isinstance(decorator, ast.Name)
+                                and decorator.id == "solver"
+                            ) or (
+                                isinstance(decorator, ast.Attribute)
+                                and decorator.attr == "solver"
+                            ):
+                                solver_function_names.append(node.name)
 
-        # Get the actual function objects from the module
-        solver_functions = []
-        for name in solver_function_names:
-            if hasattr(module, name):
-                solver_functions.append(getattr(module, name))
+            # Get the actual function objects from the module
+            solver_functions = []
+            for name in solver_function_names:
+                if hasattr(module, name):
+                    solver_functions.append(getattr(module, name))
 
-        output = solver_functions[-1]
+            output = solver_functions[-1]
+            assert isinstance(output, Callable)
+        except Exception as e:
+            import traceback
 
-        assert isinstance(output, Callable)
+            trace = traceback.format_exc()
+            raise Exception(
+                dedent(
+                    f"""Error extracting solver functions for {code_string}: {trace}. \n
+                This is the code that was used to extract the solver functions, please ensure your code is in such a format that it would be correctly extracted: 
+<solver_extraction_code>
+    @staticmethod
+    def extract_solver_functions(code_string, module_name="dynamic_module"):
+        
+        try:
+            # Create a temporary module to execute the code
+            module = ModuleType(module_name)
+            sys.modules[module_name] = module
+
+            # Execute the code string in the context of the module
+            exec(code_string, module.__dict__)
+
+            # Parse the code string to find solver-decorated function names
+            tree = ast.parse(code_string)
+            solver_function_names = []
+
+            # Find all solver-decorated functions
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef):
+                    if node.decorator_list:
+                        for decorator in node.decorator_list:
+                            if (
+                                isinstance(decorator, ast.Name)
+                                and decorator.id == "solver"
+                            ) or (
+                                isinstance(decorator, ast.Attribute)
+                                and decorator.attr == "solver"
+                            ):
+                                solver_function_names.append(node.name)
+
+            # Get the actual function objects from the module
+            solver_functions = []
+            for name in solver_function_names:
+                if hasattr(module, name):
+                    solver_functions.append(getattr(module, name))
+
+            output = solver_functions[-1]
+            assert isinstance(output, Callable)
+        except Exception as e:
+            import traceback
+
+            trace = traceback.format_exc()
+            raise Exception(
+                dedent(f"Error extracting solver functions for {code_string}: {trace}.").strip()
+            )
+
+        
+
+        return output
+    </solver_extraction_code>
+                """
+                ).strip()
+            )
 
         return output

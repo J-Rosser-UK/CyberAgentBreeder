@@ -16,9 +16,10 @@ from evals import Validator
 from evals.intercode_ctf.intercode_ctf import IntercodeCTFBenchmark
 from evals.benchmark import Benchmark
 from discover.mutation_operators import multi_agent_scaffold_mutation_operators
-
+from typing import Callable
 from base import elites
 from evals.intercode_ctf.dataset import read_dataset
+from evals.intercode_ctf.intercode_ctf import COMPOSE_FILE
 
 from evals.intercode_ctf.tools import DEFAULT_TOOL_CONFIGS
 
@@ -136,11 +137,13 @@ class Discover:
 
         results = eval(
             self.tasks(parents),
-            model=self.args.meta_agent_model,
+            model=self.args.scaffold_model,
             limit=1,
             log_dir=f"./src/logs/{self.args.log_timestamp}/discover/{self.__class__.__name__}-{str(self.args.population_id)}/logs",  # specify where logs are stored
             log_format="json",  # choose log format ("eval" or "json")
             score=False,  # ensure scoring is enable
+            log_buffer=1,
+            fail_on_error=False,
             max_samples=self.args.max_samples,
             max_tasks=self.args.max_tasks,
             max_subprocesses=self.args.max_subprocesses,
@@ -236,21 +239,15 @@ class Discover:
                 solver=solver,
                 scorer=includes(),
                 time_limit=self.args.time_limit,
+                sandbox=("docker", COMPOSE_FILE.as_posix()),
             )
             for i, solver in enumerate(solvers)
         ]
 
-    @staticmethod
     @solver
-    def discover_solver(tools, parents, base_prompt):
+    def discover_solver(self, tools, parents, base_prompt):
 
         scaffold_1, scaffold_2, mutation_operator = parents
-
-        print(
-            scaffold_1.get("scaffold_name"),
-            scaffold_2.get("scaffold_name") if scaffold_2 else None,
-            mutation_operator,
-        )
 
         if mutation_operator == "crossover":
 
@@ -319,11 +316,11 @@ class Discover:
 
             state.messages.append(ChatMessageUser(content=messages[0]["content"]))
 
-            model = get_model()
+            model = get_model(self.args.meta_agent_model)
             m = 0
             complete_output: str = ""
             for m in range(max_continues):
-                print("CONTINUE", m)
+                print(f"CONTINUE {m}")
 
                 output = await model.generate(input=state.messages, cache=False)
 
@@ -332,14 +329,9 @@ class Discover:
                 else:
                     output_message_content = str(output.message.content)
 
-                print(
-                    "OUTPUT",
-                    output_message_content[:100],
-                    "...",
-                    output_message_content[-100:],
-                )
-
                 complete_output += output_message_content
+
+                print(str(output.message)[:100])
 
                 state.messages.append(output.message)
 
@@ -347,7 +339,7 @@ class Discover:
                     tag in complete_output
                     for tag in ["</code>", "</reasoning>", "</name>"]
                 ):
-                    print("COMPLETE", m)
+                    print("All tags found!")
                     break
 
                 state.messages.append(
@@ -365,20 +357,47 @@ It is crucial that your continuation flows seamlessly from the partial response,
                     )
                 )
 
-            for _ in range(3):
+            reasoning = (
+                re.search(r"<reasoning>(.*?)</reasoning>", complete_output, re.DOTALL)
+                .group(1)
+                .strip()
+            )
+
+            name = (
+                re.search(r"<name>(.*?)</name>", complete_output, re.DOTALL)
+                .group(1)
+                .strip()
+            )
+
+            scaffold_code = (
+                re.search(r"<code>(.*?)</code>", complete_output, re.DOTALL)
+                .group(1)
+                .strip()
+            )
+
+            for d in range(3):
+                print(f"debugging {d}")
 
                 try:
-                    scaffold_code = (
-                        re.search(r"<code>(.*?)</code>", complete_output, re.DOTALL)
-                        .group(1)
-                        .strip()
-                    )
+
                     solver_fn = Benchmark.extract_solver_functions(scaffold_code)
                     if solver_fn:
-                        output = solver_fn(state, generate)
+                        solver_solver = solver_fn(tools)
+                        assert isinstance(solver_solver, Callable)
+                        try:
+                            output = await asyncio.wait_for(
+                                solver_solver(state, generate), timeout=120
+                            )
+                        except asyncio.TimeoutError:
+                            continue
+
                         break
+                    else:
+                        raise Exception("No solver function found in scaffold code")
                 except Exception as e:
                     import traceback
+
+                    traceback.print_exc()
 
                     complete_traceback = traceback.format_exc()
 
@@ -387,22 +406,86 @@ It is crucial that your continuation flows seamlessly from the partial response,
                             ChatMessageUser(
                                 content=dedent(
                                     f"""
-        The scaffold code has errors. Please fix the following issues and provide a new version between <code> tags:
+                                    You are an expert programmer tasked with identifying and fixing bugs in scaffold code. You will be provided with the original scaffold code and a traceback of the error(s). Your goal is to analyze the code, identify the bug(s), and provide a corrected version of the code.
 
-        {complete_traceback}
+Here is the scaffold code:
 
-        Ensure your response maintains the same overall structure but fixes these errors."""
+<scaffold_code>
+{scaffold_code}
+</scaffold_code>
+
+Here is the traceback of the error(s):
+
+<traceback>
+{e}
+</traceback>
+
+Please follow these steps to complete the task:
+
+1. Analyze the scaffold code and the traceback carefully.
+2. Identify the bug(s) present in the code.
+3. Fix the identified bug(s) and create a corrected version of the code.
+4. Present your findings and the corrected code in the specified format.
+
+Before providing your final output, wrap your debugging process in <debug_process> tags. In this section:
+
+1. Quote the specific lines from the traceback that indicate where the error occurred.
+2. Explain what each quoted line means in plain English.
+3. List out the variables and functions involved in the error.
+4. Describe how these elements interact to cause the bug.
+5. Outline your plan for fixing the bug, step by step.
+
+In your final output, provide two sections:
+
+1. A <bug_identified> section where you briefly describe the bug(s) you found.
+2. A <code> section containing the full corrected code. Do not use any markdown formatting (such as ``` or ```python) within this section. The code should start immediately after the opening <code> tag.
+
+Remember to maintain the overall structure of the original code while fixing the errors.
+
+Here's an example of the expected output format:
+
+<debug_process>
+[Your detailed analysis of the code and traceback, following the steps outlined above]
+</debug_process>
+
+<bug_identified>
+[Brief description of the identified bug(s)]
+</bug_identified>
+
+<code>
+# Full corrected code without any markdown formatting
+# This code will be run verbatim, so ensure it is syntactically correct
+# Do not include any markdown formatting (such as ``` or ```python) within this section. The code should start immediately after the opening <code> tag.
+# Do not include any ... or leave any bits of the code out.
+</code>
+
+Please proceed with your analysis and provide the corrected code.
+                                    """
                                 ).strip()
                             )
                         )
-                        # Reset complete_output to only keep non-code sections
-                        complete_output = re.sub(
-                            r"<code>.*?</code>", "", complete_output, flags=re.DOTALL
+                        debug_output = await model.generate(
+                            input=state.messages, cache=False
                         )
+                        try:
+                            scaffold_code = (
+                                re.search(
+                                    r"<code>(.*?)</code>", debug_output, re.DOTALL
+                                )
+                                .group(1)
+                                .strip()
+                            )
+                        except Exception as e:
+                            print("Error extracting scaffold code", e)
+                            continue
 
-            state.output.completion = complete_output
+            state.output.completion = f"""
+            <name>{name}</name>
+            <reasoning>{reasoning}</reasoning>
+            <code>{scaffold_code}</code>
+            """
 
-            print("COMPLETION", state.output.completion)
+            # print("COMPLETION", state.output.completion)
 
             return state
 
