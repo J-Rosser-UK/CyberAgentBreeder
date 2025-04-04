@@ -8,6 +8,8 @@ import logging
 import datetime
 from tqdm import tqdm
 import re
+import uuid
+import os
 from pathlib import Path
 from textwrap import dedent
 from base import Scaffold
@@ -148,7 +150,11 @@ class Discover:
             max_tasks=self.args.max_tasks,
             max_subprocesses=self.args.max_subprocesses,
             max_sandboxes=self.args.max_sandboxes,
-            max_connections=self.args.max_anthropic_connections,
+            max_connections=(
+                self.args.max_anthropic_connections
+                if self.args.scaffold_model.startswith("anthropic")
+                else self.args.max_openai_connections
+            ),
             max_tokens=self.args.max_tokens,
         )
 
@@ -363,7 +369,7 @@ It is crucial that your continuation flows seamlessly from the partial response,
                 .strip()
             )
 
-            name = (
+            scaffold_name = (
                 re.search(r"<name>(.*?)</name>", complete_output, re.DOTALL)
                 .group(1)
                 .strip()
@@ -379,8 +385,17 @@ It is crucial that your continuation flows seamlessly from the partial response,
                 print(f"debugging {d}")
 
                 try:
-
-                    solver_fn = Benchmark.extract_solver_functions(scaffold_code)
+                    current_directory = os.path.dirname(os.path.abspath(__file__))
+                    parent_directory = os.path.dirname(current_directory)
+                    cleaned_name = re.sub(r"[^A-Za-z0-9 ]+", "", scaffold_name)
+                    temp_file = (
+                        f"""{parent_directory}/temp/agent_system_temp_"""
+                        + f"""
+                        {cleaned_name}_{uuid.uuid4()}.py""".strip()
+                    )
+                    solver_fn = Benchmark.extract_solver_functions(
+                        scaffold_code, temp_file
+                    )
                     if solver_fn:
                         solver_solver = solver_fn(tools)
                         assert isinstance(solver_solver, Callable)
@@ -417,7 +432,7 @@ Here is the scaffold code:
 Here is the traceback of the error(s):
 
 <traceback>
-{e}
+{complete_traceback}
 </traceback>
 
 Please follow these steps to complete the task:
@@ -467,10 +482,15 @@ Please proceed with your analysis and provide the corrected code.
                         debug_output = await model.generate(
                             input=state.messages, cache=False
                         )
+
+                        state.messages.append(debug_output.message)
+
                         try:
                             scaffold_code = (
                                 re.search(
-                                    r"<code>(.*?)</code>", debug_output, re.DOTALL
+                                    r"<code>(.*?)</code>",
+                                    debug_output.message.content,
+                                    re.DOTALL,
                                 )
                                 .group(1)
                                 .strip()
@@ -478,9 +498,11 @@ Please proceed with your analysis and provide the corrected code.
                         except Exception as e:
                             print("Error extracting scaffold code", e)
                             continue
+                finally:
+                    os.remove(temp_file)
 
             state.output.completion = f"""
-            <name>{name}</name>
+            <name>{scaffold_name}</name>
             <reasoning>{reasoning}</reasoning>
             <code>{scaffold_code}</code>
             """

@@ -116,7 +116,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--meta_agent_model",
         type=str,
-        default="openai/gpt-4o",  # "anthropic/claude-3-7-sonnet-20250219"  "openai/gpt-4o-mini"
+        default="openai/o3-mini-2025-01-31",  # "anthropic/claude-3-7-sonnet-20250219"  "openai/gpt-4o-mini"
     )
     parser.add_argument("-p", "--population_id", type=str, default="None")
     parser.add_argument("--benchmark", type=str, default="intercode_ctf")

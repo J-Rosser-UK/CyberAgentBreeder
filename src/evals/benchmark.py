@@ -60,7 +60,11 @@ class Benchmark(ABC):
             max_tasks=self.args.max_tasks,
             max_subprocesses=self.args.max_subprocesses,
             max_sandboxes=self.args.max_sandboxes,
-            max_connections=self.args.max_openai_connections,
+            max_connections=(
+                self.args.max_anthropic_connections
+                if self.args.scaffold_model.startswith("anthropic")
+                else self.args.max_openai_connections
+            ),
             log_buffer=1,
         )
 
@@ -110,24 +114,38 @@ class Benchmark(ABC):
         return model_metrics
 
     @staticmethod
-    def extract_solver_functions(code_string, module_name="dynamic_module"):
+    def extract_solver_functions(code_string, temp_path=None):
         """
         Extract callable solver functions from a Python code string.
 
         Args:
             code_string (str): A string containing Python code
             module_name (str): Name to give the dynamically created module
+            temp_path (str, optional): Path where to create a temporary file. If None, a module is created in memory.
 
         Returns:
             list: A list of callable solver functions that are decorated with @solver
         """
+        module_name = "dynamic_module"
         try:
-            # Create a temporary module to execute the code
-            module = ModuleType(module_name)
-            sys.modules[module_name] = module
+            if temp_path:
+                # Create a temporary file and write the code to it
+                os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+                with open(temp_path, "w") as f:
+                    f.write(code_string)
 
-            # Execute the code string in the context of the module
-            exec(code_string, module.__dict__)
+                # Import the module from the file
+                spec = importlib.util.spec_from_file_location(module_name, temp_path)
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[module_name] = module
+                spec.loader.exec_module(module)
+            else:
+                # Create a temporary module to execute the code (original behavior)
+                module = ModuleType(module_name)
+                sys.modules[module_name] = module
+
+                # Execute the code string in the context of the module
+                exec(code_string, module.__dict__)
 
             # Parse the code string to find solver-decorated function names
             tree = ast.parse(code_string)
@@ -159,21 +177,38 @@ class Benchmark(ABC):
             import traceback
 
             trace = traceback.format_exc()
+            error_message = f"Error extracting solver functions from scaffold code: {str(e)}\n{trace}"
+
+            if temp_path and os.path.exists(temp_path):
+                error_message += f"\nScaffold code was written to: {temp_path}"
+
             raise Exception(
                 dedent(
                     f"""Error extracting solver functions from scaffold code. \n
                 This is the code that was used to extract the solver functions, please ensure your code is in such a format that it would be correctly extracted: 
 <solver_extraction_code>
     @staticmethod
-    def extract_solver_functions(code_string, module_name="dynamic_module"):
+    def extract_solver_functions(code_string, module_name="dynamic_module", temp_path=None):
         
         try:
-            # Create a temporary module to execute the code
-            module = ModuleType(module_name)
-            sys.modules[module_name] = module
-
-            # Execute the code string in the context of the module
-            exec(code_string, module.__dict__)
+            if temp_path:
+                # Create a temporary file and write the code to it
+                os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+                with open(temp_path, 'w') as f:
+                    f.write(code_string)
+                
+                # Import the module from the file
+                spec = importlib.util.spec_from_file_location(module_name, temp_path)
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[module_name] = module
+                spec.loader.exec_module(module)
+            else:
+                # Create a temporary module to execute the code
+                module = ModuleType(module_name)
+                sys.modules[module_name] = module
+                
+                # Execute the code string in the context of the module
+                exec(code_string, module.__dict__)
 
             # Parse the code string to find solver-decorated function names
             tree = ast.parse(code_string)
@@ -206,10 +241,8 @@ class Benchmark(ABC):
 
             trace = traceback.format_exc()
             raise Exception(
-                dedent(f"Error extracting solver functions from scaffold code.").strip()
+                dedent(f"Error extracting solver functions from scaffold code: {str(e)}").strip()
             )
-
-        
 
         return output
     </solver_extraction_code>
