@@ -318,9 +318,13 @@ class Discover:
             )
             state.metadata["mutation_operator"] = mutation_operator
 
-            state.messages = []
+            initial_state_messages = state.messages.copy()
 
-            state.messages.append(ChatMessageUser(content=messages[0]["content"]))
+            meta_agent_state_messages = []
+
+            meta_agent_state_messages.append(
+                ChatMessageUser(content=messages[0]["content"])
+            )
 
             model = get_model(self.args.meta_agent_model)
             m = 0
@@ -328,7 +332,9 @@ class Discover:
             for m in range(max_continues):
                 print(f"CONTINUE {m}")
 
-                output = await model.generate(input=state.messages, cache=False)
+                output = await model.generate(
+                    input=meta_agent_state_messages, cache=False
+                )
 
                 if isinstance(output.message.content, list):
                     output_message_content = str(output.message.content[0].text)
@@ -339,7 +345,7 @@ class Discover:
 
                 print(str(output.message)[:100])
 
-                state.messages.append(output.message)
+                meta_agent_state_messages.append(output.message)
 
                 if all(
                     tag in complete_output
@@ -348,7 +354,7 @@ class Discover:
                     print("All tags found!")
                     break
 
-                state.messages.append(
+                meta_agent_state_messages.append(
                     ChatMessageUser(
                         content=dedent(
                             f"""
@@ -381,10 +387,11 @@ It is crucial that your continuation flows seamlessly from the partial response,
                 .strip()
             )
 
-            for d in range(3):
+            for d in range(self.args.debug_max):
                 print(f"debugging {d}")
 
                 try:
+                    state.messages = initial_state_messages
                     current_directory = os.path.dirname(os.path.abspath(__file__))
                     parent_directory = os.path.dirname(current_directory)
                     cleaned_name = re.sub(r"[^A-Za-z0-9 ]+", "", scaffold_name)
@@ -401,12 +408,16 @@ It is crucial that your continuation flows seamlessly from the partial response,
                         assert isinstance(solver_solver, Callable)
                         try:
                             output = await asyncio.wait_for(
-                                solver_solver(state, generate), timeout=120
+                                solver_solver(state, generate), timeout=60
                             )
                         except asyncio.TimeoutError:
-                            continue
+                            meta_agent_state_messages.append(
+                                ChatMessageUser(content=dedent("""Scaffold runs!"""))
+                            )
 
-                        break
+                            print("Code ran! Timeout error reached :)")
+                            break
+
                     else:
                         raise Exception("No solver function found in scaffold code")
                 except Exception as e:
@@ -417,73 +428,73 @@ It is crucial that your continuation flows seamlessly from the partial response,
                     complete_traceback = traceback.format_exc()
 
                     if complete_traceback:
-                        state.messages.append(
+                        meta_agent_state_messages.append(
                             ChatMessageUser(
                                 content=dedent(
                                     f"""
                                     You are an expert programmer tasked with identifying and fixing bugs in scaffold code. You will be provided with the original scaffold code and a traceback of the error(s). Your goal is to analyze the code, identify the bug(s), and provide a corrected version of the code.
 
-Here is the scaffold code:
+                                    Here is the scaffold code:
 
-<scaffold_code>
-{scaffold_code}
-</scaffold_code>
+                                    <scaffold_code>
+                                    {scaffold_code}
+                                    </scaffold_code>
 
-Here is the traceback of the error(s):
+                                    Here is the traceback of the error(s):
 
-<traceback>
-{complete_traceback}
-</traceback>
+                                    <traceback>
+                                    {complete_traceback}
+                                    </traceback>
 
-Please follow these steps to complete the task:
+                                    Please follow these steps to complete the task:
 
-1. Analyze the scaffold code and the traceback carefully.
-2. Identify the bug(s) present in the code.
-3. Fix the identified bug(s) and create a corrected version of the code.
-4. Present your findings and the corrected code in the specified format.
+                                    1. Analyze the scaffold code and the traceback carefully.
+                                    2. Identify the bug(s) present in the code.
+                                    3. Fix the identified bug(s) and create a corrected version of the code.
+                                    4. Present your findings and the corrected code in the specified format.
 
-Before providing your final output, wrap your debugging process in <debug_process> tags. In this section:
+                                    Before providing your final output, wrap your debugging process in <debug_process> tags. In this section:
 
-1. Quote the specific lines from the traceback that indicate where the error occurred.
-2. Explain what each quoted line means in plain English.
-3. List out the variables and functions involved in the error.
-4. Describe how these elements interact to cause the bug.
-5. Outline your plan for fixing the bug, step by step.
+                                    1. Quote the specific lines from the traceback that indicate where the error occurred.
+                                    2. Explain what each quoted line means in plain English.
+                                    3. List out the variables and functions involved in the error.
+                                    4. Describe how these elements interact to cause the bug.
+                                    5. Outline your plan for fixing the bug, step by step.
 
-In your final output, provide two sections:
+                                    In your final output, provide two sections:
 
-1. A <bug_identified> section where you briefly describe the bug(s) you found.
-2. A <code> section containing the full corrected code. Do not use any markdown formatting (such as ``` or ```python) within this section. The code should start immediately after the opening <code> tag.
+                                    1. A <bug_identified> section where you briefly describe the bug(s) you found.
+                                    2. A <code> section containing the full corrected code. Do not use any markdown formatting (such as ``` or ```python) within this section. The code should start immediately after the opening <code> tag.
 
-Remember to maintain the overall structure of the original code while fixing the errors.
+                                    Remember to maintain the overall structure of the original code while fixing the errors.
 
-Here's an example of the expected output format:
+                                    Here's an example of the expected output format:
 
-<debug_process>
-[Your detailed analysis of the code and traceback, following the steps outlined above]
-</debug_process>
+                                    <debug_process>
+                                    [Your detailed analysis of the code and traceback, following the steps outlined above]
+                                    </debug_process>
 
-<bug_identified>
-[Brief description of the identified bug(s)]
-</bug_identified>
+                                    <bug_identified>
+                                    [Brief description of the identified bug(s)]
+                                    </bug_identified>
 
-<code>
-# Full corrected code without any markdown formatting
-# This code will be run verbatim, so ensure it is syntactically correct
-# Do not include any markdown formatting (such as ``` or ```python) within this section. The code should start immediately after the opening <code> tag.
-# Do not include any ... or leave any bits of the code out.
-</code>
+                                    <code>
+                                    # Full corrected code without any markdown formatting
+                                    # This code will be run verbatim, so ensure it is syntactically correct
+                                    # Do not include any markdown formatting (such as ``` or ```python) within this section. The code should start immediately after the opening <code> tag.
+                                    # Do not include any ... or leave any bits of the code out.
+                                    </code>
 
-Please proceed with your analysis and provide the corrected code.
+                                    Please proceed with your analysis and provide the corrected code.
                                     """
                                 ).strip()
                             )
                         )
                         debug_output = await model.generate(
-                            input=state.messages, cache=False
+                            input=meta_agent_state_messages, cache=False
                         )
 
-                        state.messages.append(debug_output.message)
+                        meta_agent_state_messages.append(debug_output.message)
 
                         try:
                             scaffold_code = (
@@ -508,6 +519,8 @@ Please proceed with your analysis and provide the corrected code.
             """
 
             # print("COMPLETION", state.output.completion)
+
+            state.metadata["meta_agent_state_messages"] = meta_agent_state_messages
 
             return state
 

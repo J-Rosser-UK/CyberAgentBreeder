@@ -87,5 +87,13 @@ def initialize_population_id(args) -> str:
                 scaffold_benchmark=args.benchmark,
             )
             scaffold.update(scaffold_descriptor=descriptor.generate(scaffold))
+            if not args.eval_seed_scaffolds:
+                scaffold.update(
+                    scaffold_capability_ci_median=0.0,
+                    scaffold_capability_ci_sample_size=args.n_evals,
+                    scaffold_capability_ci_lower=0.0,
+                    scaffold_capability_ci_upper=0.0,
+                    scaffold_capability_ci_confidence_level=0.95,
+                )
 
     return str(population_id)
