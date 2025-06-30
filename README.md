@@ -26,7 +26,7 @@
     <img src="https://img.shields.io/github/issues/J-Rosser-UK/CyberAgentBreeder" alt="open issues" />
   </a>
   <a href="https://github.com/J-Rosser-UK/CyberAgentBreeder/blob/master/LICENSE">
-    <img src="https://img.shields.io/github/license/J-Rosser-UK/CyberAgentBreeder.svg" alt="license" />
+    <img src="https://img.shields.io/github/license/J-Rosser-UK/CyberAgentBreeder" alt="license" />
   </a>
 </p>
    
